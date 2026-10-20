@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "secondary-fixed-dim": "#bec6e0", "on-secondary": "#ffffff", "inverse-primary": "#b4c5ff", "surface-container-high": "#dce9ff", "surface-container": "#e5eeff", "primary-container": "#2563eb", "on-secondary-fixed-variant": "#3f465c", "secondary-container": "#dae2fd", "outline": "#737686", "primary": "#004ac6", "inverse-surface": "#213145", "on-tertiary": "#ffffff", "on-error-container": "#93000a", "surface-container-highest": "#d3e4fe", "inverse-on-surface": "#eaf1ff", "on-primary-fixed-variant": "#003ea8", "tertiary-fixed": "#6ffbbe", "on-tertiary-fixed-variant": "#005236", "on-surface": "#0b1c30", "on-secondary-container": "#5c647a", "on-primary": "#ffffff", "surface": "#f8f9ff", "background": "#f8f9ff", "error": "#ba1a1a", "on-secondary-fixed": "#131b2e", "on-background": "#0b1c30", "on-tertiary-fixed": "#002113", "tertiary-fixed-dim": "#4edea3", "primary-fixed-dim": "#b4c5ff", "surface-container-low": "#eff4ff", "on-primary-container": "#eeefff", "outline-variant": "#c3c6d7", "tertiary": "#006242", "surface-dim": "#cbdbf5", "tertiary-container": "#007d55", "secondary": "#565e74", "surface-bright": "#f8f9ff", "on-error": "#ffffff", "primary-fixed": "#dbe1ff", "on-surface-variant": "#434655", "on-tertiary-container": "#bdffdb", "on-primary-fixed": "#00174b", "surface-container-lowest": "#ffffff", "surface-tint": "#0053db", "error-container": "#ffdad6", "surface-variant": "#d3e4fe", "secondary-fixed": "#dae2fd" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "margin-lg": "2rem", "space-md": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "gutter": "1rem", "gutter-lg": "1.5rem", "space-xl": "2rem" }, fontFamily: { "body-sm": ["Inter"], "label-md": ["Inter"], "headline-md": ["Inter"], "headline-xl": ["Inter"], "label-lg": ["Inter"], "code-sm": ["JetBrains Mono"], "body-md": ["Inter"], "headline-lg": ["Inter"], "code-md": ["JetBrains Mono"], "body-lg": ["Inter"] }, fontSize: { "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }], "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }], "headline-md": ["18px", { lineHeight: "24px", fontWeight: "600" }], "headline-xl": ["32px", { lineHeight: "40px", fontWeight: "700" }], "label-lg": ["14px", { lineHeight: "20px", fontWeight: "500" }], "code-sm": ["11px", { lineHeight: "14px", fontWeight: "400" }], "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }], "headline-lg": ["24px", { lineHeight: "32px", fontWeight: "600" }], "code-md": ["13px", { lineHeight: "18px", fontWeight: "500" }], "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-inverse-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-14 px-space-md flex items-center gap-space-sm bg-inverse-surface"><img alt="CrossCloud Registry Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W-4FDEw452upWPbwGsbUExFm_jlChbRJTj1WVjO-4hqlOXqQ5nsCDQPwyfkHZNhlFuY31p_KnftoNnil82OyLwJL3sAnEBBN2fcHbh1Jb8CCq6gcg3VKrHLLL0DYTJjxyzSDe65arQyImWDQMYRoX9g5rW3gUUXac5XTbLAGICmwFDDvFCyGxZKOvzZZvkrAlpzP0z2nef0pCXIvTl4IQrEGu2yRdZ7w5zQ7Fywm0QTMFX2UWfkinzMQ"/><div class="flex flex-col"><span class="font-label-lg text-label-lg font-semibold text-inverse-on-surface leading-tight tracking-tight">CrossCloud Registry</span><span class="font-code-sm text-code-sm text-inverse-primary leading-none">Consul Engine v1.18.2</span></div></div><nav class="flex flex-col gap-space-xs px-space-sm mt-space-md" data-active-classes="bg-primary-container text-on-primary-container font-label-lg rounded-lg shadow-sm"><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="overview" href="index.html"><span class="material-symbols-outlined text-[20px]">grid_view</span><span>Overview</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="service-registry" href="service-registry.html"><span class="material-symbols-outlined text-[20px]">dns</span><span>Service Registry</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="service-discovery" href="service-discovery.html"><span class="material-symbols-outlined text-[20px]">radar</span><span>Service Discovery</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="health-monitoring" href="health-monitoring.html"><span class="material-symbols-outlined text-[20px]">monitor_heart</span><span>Health Monitoring</span></a><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-space-xs transition-colors bg-primary-container text-on-primary-container font-label-lg rounded-lg shadow-sm" data-path="settings" href="settings.html"><span class="material-symbols-outlined text-[20px]">settings</span><span>Settings</span></a></nav></div><div class="p-space-sm m-space-sm rounded-lg bg-surface-container-high/10 flex flex-col gap-space-xs"><div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary-fixed"></span></span><span class="font-code-sm text-code-sm uppercase font-semibold text-tertiary-fixed">CONNECTED</span></div><span class="font-code-sm text-code-sm text-inverse-on-surface/60">5s sync</span></div><div class="font-code-sm text-code-sm text-inverse-on-surface/70 truncate">Leader: <span class="text-inverse-on-surface font-code-sm text-code-sm">consul-core-01</span></div><div class="font-code-sm text-code-sm text-inverse-on-surface/50">Datacenter: us-east-1</div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low"><span class="material-symbols-outlined text-primary text-[18px]">hub</span><span class="font-label-md text-label-md text-on-surface font-medium">Production Cluster:</span><span class="font-code-sm text-code-sm text-primary font-medium">multi-cloud-mesh-prod</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container"><span class="material-symbols-outlined text-secondary text-[16px]">public</span><span class="font-code-sm text-code-sm text-on-surface-variant font-medium">global-wan</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface-variant"><span class="material-symbols-outlined text-[16px]">terminal</span><span class="font-code-sm text-code-sm">Express API: http://localhost:5000</span><span class="inline-block w-2 h-2 rounded-full bg-tertiary-container"></span></div><button class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface text-on-surface-variant hover:text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors"><span class="material-symbols-outlined text-[18px]">search</span><span class="font-label-md text-label-md">Search</span><kbd class="px-space-xs py-0.5 text-[10px] font-code-sm bg-surface-container text-on-surface-variant rounded">⌘K</kbd></button><div class="relative flex items-center justify-center"><button class="p-space-xs rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span></button><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-error"></span></div><div class="flex items-center gap-space-sm pl-space-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden lg:flex flex-col text-left"><span class="font-label-md text-label-md font-medium text-on-surface leading-tight">Admin Engineer</span><span class="font-code-sm text-code-sm text-secondary leading-tight">mesh-admin</span></div></div></div></header><main class="relative pt-14 w-full min-h-screen bg-surface px-space-lg py-space-lg"><div class="flex flex-col w-full gap-space-lg">
+<!-- Header Section with Page Meta and Top Actions -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md pb-space-xs">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="font-code-sm text-code-sm uppercase tracking-wider text-primary font-semibold">Cluster Environment // Control Plane</span>
+<span class="inline-block w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">WAN: global-wan</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Settings</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+        Configure the service registry, proxy gateways, probe thresholds, and multi-cloud overlay orchestrators.
+      </p>
+</div>
+<!-- Quick action buttons -->
+<div class="flex items-center gap-space-sm self-start md:self-auto">
+<button class="px-space-md py-space-xs rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg transition-all flex items-center gap-space-xs shadow-sm" id="topResetBtn">
+<span class="material-symbols-outlined text-[18px] text-secondary">restart_alt</span>
+<span>Reset to Defaults</span>
+</button>
+<button class="px-space-md py-space-xs rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-lg text-label-lg transition-all flex items-center gap-space-xs shadow-sm" id="topSaveBtn">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>Save Changes</span>
+</button>
+</div>
+</div>
+<!-- Row 1: Split Grid (Consul Connection & Express API) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-lg">
+<!-- Section 1: Consul Connection Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+<div class="flex flex-col gap-space-md">
+<!-- Card Header -->
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">dns</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface">Consul Connection</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">HashiCorp Raft Cluster Protocol</span>
+</div>
+</div>
+<!-- Status indicator pill -->
+<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container-low text-tertiary font-code-sm text-code-sm font-semibold">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-container opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary-container"></span>
+</span>
+            Connected • Passing (v1.18.2)
+          </span>
+</div>
+<!-- Inputs List -->
+<div class="flex flex-col gap-space-sm mt-space-xs">
+<!-- HTTP API Address -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface font-medium flex items-center justify-between">
+<span>Consul HTTP API Address</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant font-normal">TCP Port 8500</span>
+</label>
+<div class="relative flex items-center">
+<input class="w-full pl-3 pr-10 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" type="text" value="http://localhost:8500"/>
+<button class="absolute right-2 p-1 text-on-surface-variant hover:text-primary transition-colors" onclick="navigator.clipboard.writeText('http://localhost:8500')" title="Copy URL">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</div>
+<!-- Datacenter ID -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface font-medium">Datacenter ID / WAN Name</label>
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" type="text" value="dc1 (global-wan)"/>
+</div>
+<!-- ACL Token -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface font-medium">ACL Token / Bearer Key</label>
+<span class="font-code-sm text-code-sm text-secondary">Optional / Client Mesh</span>
+</div>
+<div class="relative flex items-center">
+<input class="w-full pl-3 pr-10 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md tracking-wider focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" id="consulTokenInput" type="password" value="c89f074d-728b-4f9e-915d-85265ecb0231"/>
+<button class="absolute right-2 p-1 text-on-surface-variant hover:text-on-surface transition-colors" onclick="const t = document.getElementById('consulTokenInput'); t.type = t.type === 'password' ? 'text' : 'password';">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Row -->
+<div class="mt-space-lg pt-space-md flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-low/50 -mx-space-lg -mb-space-lg p-space-md rounded-b-xl">
+<button class="px-space-md py-1.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-md text-label-md transition-all flex items-center gap-space-xs shadow-sm" id="testConsulBtn">
+<span class="material-symbols-outlined text-[16px] text-primary">network_ping</span>
+<span>Test Connection</span>
+</button>
+<div class="flex items-center gap-1.5 px-space-sm py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm" id="consulLatencyBadge">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+<span>Latency: <strong class="font-semibold text-primary">1.4ms</strong> • Leader reachable</span>
+</div>
+</div>
+</div>
+<!-- Section 2: Application API Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+<div class="flex flex-col gap-space-md">
+<!-- Card Header -->
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">terminal</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface">Express Application API</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Node.js Gateway Router</span>
+</div>
+</div>
+<!-- Status indicator badge -->
+<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container-low text-tertiary font-code-sm text-code-sm font-semibold">
+<span class="inline-block w-2 h-2 rounded-full bg-tertiary-container"></span>
+            Active • Listening on :5000
+          </span>
+</div>
+<!-- Inputs List -->
+<div class="flex flex-col gap-space-sm mt-space-xs">
+<!-- Backend API URL -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface font-medium flex items-center justify-between">
+<span>Backend API Base URL</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant font-normal">Mount: /api/v1</span>
+</label>
+<div class="relative flex items-center">
+<input class="w-full pl-3 pr-10 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" type="text" value="http://localhost:5000/api"/>
+<button class="absolute right-2 p-1 text-on-surface-variant hover:text-primary transition-colors" onclick="navigator.clipboard.writeText('http://localhost:5000/api')" title="Copy URL">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</div>
+<!-- CORS Origins -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface font-medium">API Gateway / CORS Origins</label>
+<span class="font-code-sm text-code-sm text-secondary">Access-Control-Allow-Origin</span>
+</div>
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" type="text" value="http://localhost:3000, http://127.0.0.1:8500"/>
+</div>
+<!-- Active Gateway Routes Preview -->
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-surface font-medium">Registered Route Handlers</span>
+<div class="flex flex-wrap gap-1.5 p-2 rounded-lg bg-surface-container-low">
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-surface-container-lowest text-primary">GET /services</span>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-surface-container-lowest text-primary">GET /discover/:name</span>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-surface-container-lowest text-primary">GET /health</span>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-surface-container-lowest text-primary">POST /register</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Row -->
+<div class="mt-space-lg pt-space-md flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-low/50 -mx-space-lg -mb-space-lg p-space-md rounded-b-xl">
+<button class="px-space-md py-1.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-primary font-label-md text-label-md transition-all flex items-center gap-space-xs shadow-sm" id="testApiBtn">
+<span class="material-symbols-outlined text-[16px]">sync_alt</span>
+<span>Test API Connection</span>
+</button>
+<div class="flex items-center gap-1.5 px-space-sm py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm truncate" id="apiStatusBadge">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+<span>HTTP 200 OK — Handlers synced</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Health Check & Probe Configuration -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-xs pb-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">monitor_heart</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface">Health Check &amp; Probe Configuration</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Define global default polling intervals and threshold settings for synthetic probes.</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs px-space-sm py-1 rounded-lg bg-surface-container-low font-code-sm text-code-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-tertiary">check</span>
+<span>RFC-8555 Synthetic Probe Policy</span>
+</div>
+</div>
+<!-- Configuration Grid (5 inputs) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-space-md">
+<!-- Default Endpoint -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface font-medium">Default Health Endpoint</label>
+<div class="relative flex items-center">
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" type="text" value="/health"/>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant">HTTP GET ping target</span>
+</div>
+<!-- Health Check Interval -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface font-medium">Check Interval</label>
+<div class="relative flex items-center">
+<input class="w-full pl-3 pr-16 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" max="120" min="1" type="number" value="10"/>
+<span class="absolute right-3 font-code-sm text-code-sm text-on-surface-variant">sec</span>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Polling cycle rate</span>
+</div>
+<!-- Request Timeout -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface font-medium">Request Timeout</label>
+<div class="relative flex items-center">
+<input class="w-full pl-3 pr-16 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" max="30" min="0.5" step="0.5" type="number" value="2.5"/>
+<span class="absolute right-3 font-code-sm text-code-sm text-on-surface-variant">sec</span>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Socket drop deadline</span>
+</div>
+<!-- Deregister Critical Service -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface font-medium">Deregister Critical After</label>
+<div class="relative flex items-center">
+<select class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all appearance-none cursor-pointer">
+<option value="1m">1 minute</option>
+<option selected="" value="5m">5 minutes</option>
+<option value="15m">15 minutes</option>
+<option value="1h">1 hour</option>
+</select>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant absolute right-2 pointer-events-none">expand_more</span>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Auto-evict from catalog</span>
+</div>
+<!-- Passing / Failure Threshold -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface font-medium">Passing / Failure Margin</label>
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all" type="text" value="3 success / 2 fail"/>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Consecutive probe count</span>
+</div>
+</div>
+<!-- Toggle Section -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm p-space-md rounded-lg bg-surface-container-low mt-space-xs">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px]">tune</span>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-medium text-on-surface">Enable Consul Serf Health TTL Checks</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Maintains active membership state gossiping over port 8301/udp across all cross-cloud WAN nodes.</span>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:border-surface-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+<!-- Section 4: Cloud Providers (Multi-Cloud Simulation) -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-primary">cloud_sync</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Cloud Providers Configuration</h2>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant">3 Providers Managed</span>
+</div>
+<!-- Alert / Prototype Mode Banner -->
+<div class="flex items-start gap-space-sm p-space-md rounded-xl bg-surface-container-high text-on-surface">
+<span class="material-symbols-outlined text-[20px] text-primary mt-0.5">info</span>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs w-full">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-semibold text-on-surface">Prototype Mode Active</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+            Cloud providers can be simulated locally via mock datacenters or Docker containers for this project evaluation.
+          </span>
+</div>
+<span class="font-code-sm text-code-sm px-space-sm py-1 rounded bg-surface-container-lowest text-primary font-medium shrink-0">
+          Overlay: VxLAN Mesh 10.0.0.0/16
+        </span>
+</div>
+</div>
+<!-- 3-Column Provider Subgrid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- AWS Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-lg bg-surface-container-low flex items-center justify-center text-[#c2410c]">
+<span class="material-symbols-outlined text-[20px]">cloud</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-semibold text-on-surface">Amazon Web Services</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">AWS Provider</span>
+</div>
+</div>
+<!-- Cloud Provider Badge: AWS -->
+<span class="inline-flex items-center gap-1 px-space-xs py-0.5 rounded font-code-sm text-code-sm font-semibold bg-[#fff7ed] text-[#c2410c]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#f97316]"></span>
+              AWS us-east-1
+            </span>
+</div>
+<!-- Metadata Stack -->
+<div class="flex flex-col gap-1.5 pt-space-xs text-body-sm">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Status:</span>
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+                Active • VPC Overlay
+              </span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Subnet:</span>
+<span class="font-code-sm text-code-sm text-on-surface">10.0.1.0/24</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Region:</span>
+<span class="font-code-sm text-code-sm text-on-surface">us-east-1 (N. Virginia)</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Mock Daemon:</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">10.0.1.10:8300</span>
+</div>
+</div>
+</div>
+<button class="mt-space-md w-full py-1.5 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md transition-all flex items-center justify-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">tune</span>
+<span>Edit Configuration</span>
+</button>
+</div>
+<!-- GCP Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-lg bg-surface-container-low flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[20px]">filter_drama</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-semibold text-on-surface">Google Cloud Platform</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">GCP Mesh</span>
+</div>
+</div>
+<!-- Cloud Provider Badge: GCP -->
+<span class="inline-flex items-center gap-1 px-space-xs py-0.5 rounded font-code-sm text-code-sm font-semibold bg-[#f0fdf4] text-[#15803d]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
+              GCP us-central1
+            </span>
+</div>
+<!-- Metadata Stack -->
+<div class="flex flex-col gap-1.5 pt-space-xs text-body-sm">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Status:</span>
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+                Active • Cloud Mesh
+              </span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Subnet:</span>
+<span class="font-code-sm text-code-sm text-on-surface">10.0.1.0/24</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Region:</span>
+<span class="font-code-sm text-code-sm text-on-surface">us-central1 (Iowa)</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Mock Daemon:</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">10.0.1.20:8300</span>
+</div>
+</div>
+</div>
+<button class="mt-space-md w-full py-1.5 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md transition-all flex items-center justify-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">tune</span>
+<span>Edit Configuration</span>
+</button>
+</div>
+<!-- Azure Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-lg bg-surface-container-low flex items-center justify-center text-[#0369a1]">
+<span class="material-symbols-outlined text-[20px]">cloud_queue</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-semibold text-on-surface">Microsoft Azure</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">VNet Peering</span>
+</div>
+</div>
+<!-- Cloud Provider Badge: Azure -->
+<span class="inline-flex items-center gap-1 px-space-xs py-0.5 rounded font-code-sm text-code-sm font-semibold bg-[#f0f9ff] text-[#0369a1]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#0ea5e9]"></span>
+              Azure East US 2
+            </span>
+</div>
+<!-- Metadata Stack -->
+<div class="flex flex-col gap-1.5 pt-space-xs text-body-sm">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Status:</span>
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                Degraded (1 Node Down)
+              </span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Subnet:</span>
+<span class="font-code-sm text-code-sm text-on-surface">10.0.1.0/24</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Region:</span>
+<span class="font-code-sm text-code-sm text-on-surface">eastus2 (Virginia)</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Mock Daemon:</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">10.0.1.30:8300</span>
+</div>
+</div>
+</div>
+<button class="mt-space-md w-full py-1.5 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md transition-all flex items-center justify-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">tune</span>
+<span>Edit Configuration</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Section 5: General Preferences & Telemetry -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">tune</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface">General Dashboard Preferences</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Control UI streaming frequencies, telemetry verbosity, and SDK snippets.</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Auto Refresh Toggle -->
+<div class="flex flex-col justify-between p-space-md rounded-lg bg-surface-container-low gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-medium text-on-surface">Auto-Refresh Live Mesh</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Poll status in background</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:border-surface-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<span class="font-code-sm text-code-sm text-tertiary font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+          SSE WebSocket link active
+        </span>
+</div>
+<!-- Dashboard Polling Interval -->
+<div class="flex flex-col gap-1.5 p-space-md rounded-lg bg-surface-container-low">
+<label class="font-label-md text-label-md text-on-surface font-medium">Dashboard Polling Interval</label>
+<div class="relative flex items-center">
+<select class="w-full px-3 py-2 rounded-lg bg-surface-container-lowest text-on-surface font-code-md text-code-md focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer">
+<option value="1s">1 second (High Latency Load)</option>
+<option selected="" value="5s">5 seconds (Live Stream)</option>
+<option value="15s">15 seconds (Standard)</option>
+<option value="30s">30 seconds (Power Saver)</option>
+</select>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant absolute right-2 pointer-events-none">expand_more</span>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Sync rate with Express worker</span>
+</div>
+<!-- Telemetry Log Level -->
+<div class="flex flex-col gap-1.5 p-space-md rounded-lg bg-surface-container-low">
+<label class="font-label-md text-label-md text-on-surface font-medium">Telemetry Log Level</label>
+<div class="relative flex items-center">
+<select class="w-full px-3 py-2 rounded-lg bg-surface-container-lowest text-on-surface font-code-md text-code-md focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer">
+<option value="debug">DEBUG (Verbose Raft frames)</option>
+<option selected="" value="info">INFO (Agent + Morgan)</option>
+<option value="warn">WARN (Errors &amp; Dropped)</option>
+<option value="err">ERROR (Fatal only)</option>
+</select>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant absolute right-2 pointer-events-none">expand_more</span>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Outputs to system journal</span>
+</div>
+<!-- Code Snippet Language Preview Toggle -->
+<div class="flex flex-col gap-1.5 p-space-md rounded-lg bg-surface-container-low">
+<label class="font-label-md text-label-md text-on-surface font-medium">SDK Discovery Snippet</label>
+<div class="flex items-center gap-1 p-1 bg-surface-container-lowest rounded-lg mt-0.5" id="codeLangToggleGroup">
+<button class="flex-1 py-1 rounded text-center font-code-sm text-code-sm font-semibold bg-primary text-on-primary transition-all" id="lang-js" onclick="setSnippetLang('js')">Node.js</button>
+<button class="flex-1 py-1 rounded text-center font-code-sm text-code-sm text-on-surface-variant hover:text-on-surface transition-all" id="lang-curl" onclick="setSnippetLang('curl')">cURL</button>
+<button class="flex-1 py-1 rounded text-center font-code-sm text-code-sm text-on-surface-variant hover:text-on-surface transition-all" id="lang-go" onclick="setSnippetLang('go')">Go</button>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant" id="snippetDesc">Express &amp; Axios template</span>
+</div>
+</div>
+</div>
+<!-- Bottom Action Sticky/Fixed Footer Bar -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col sm:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px] text-secondary">database</span>
+<span class="font-body-sm text-body-sm">
+        Unsaved changes will be stored locally in browser localStorage until synchronized with the Express backend.
+      </span>
+</div>
+<div class="flex items-center gap-space-sm shrink-0 w-full sm:w-auto justify-end">
+<button class="px-space-md py-space-xs rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg transition-all shadow-sm" id="bottomResetBtn">
+        Reset to Defaults
+      </button>
+<button class="px-space-lg py-space-xs rounded-lg bg-primary-container hover:bg-primary text-on-primary font-label-lg text-label-lg transition-all flex items-center gap-space-xs shadow-sm" id="bottomSaveBtn">
+<span class="material-symbols-outlined text-[18px]">save</span>
+<span>Save Settings</span>
+</button>
+</div>
+</div>
+<!-- Client-side Interactive Logic -->
+<script>
+    function setSnippetLang(lang) {
+      const langs = ['js', 'curl', 'go'];
+      langs.forEach(l => {
+        const btn = document.getElementById('lang-' + l);
+        if (l === lang) {
+          btn.className = 'flex-1 py-1 rounded text-center font-code-sm text-code-sm font-semibold bg-primary text-on-primary transition-all';
+        } else {
+          btn.className = 'flex-1 py-1 rounded text-center font-code-sm text-code-sm text-on-surface-variant hover:text-on-surface transition-all';
+        }
+      });
+      const desc = document.getElementById('snippetDesc');
+      if (lang === 'js') desc.textContent = 'Express & Axios template';
+      if (lang === 'curl') desc.textContent = 'CLI HTTP ping syntax';
+      if (lang === 'go') desc.textContent = 'consul/api official client';
+    }
+
+    // Ping tests micro-interactions
+    document.getElementById('testConsulBtn').addEventListener('click', function() {
+      const badge = document.getElementById('consulLatencyBadge');
+      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span><span>Probing Raft leader...</span>';
+      setTimeout(() => {
+        const ms = (Math.random() * 1.5 + 0.8).toFixed(1);
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span><span>Latency: <strong class="font-semibold text-primary">' + ms + 'ms</strong> • Leader reachable</span>';
+      }, 650);
+    });
+
+    document.getElementById('testApiBtn').addEventListener('click', function() {
+      const badge = document.getElementById('apiStatusBadge');
+      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span><span>Testing /health ping...</span>';
+      setTimeout(() => {
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span><span>HTTP 200 OK — Routes responsive</span>';
+      }, 500);
+    });
+
+    function showSaveFeedback(btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check</span><span>Saved!</span>';
+      btn.classList.add('bg-tertiary-container');
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove('bg-tertiary-container');
+      }, 1500);
+    }
+
+    document.getElementById('topSaveBtn').addEventListener('click', function() { showSaveFeedback(this); });
+    document.getElementById('bottomSaveBtn').addEventListener('click', function() { showSaveFeedback(this); });
+  </script>
+</div></main></div></body></html>

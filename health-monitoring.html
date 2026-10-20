@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "secondary-fixed-dim": "#bec6e0", "on-secondary": "#ffffff", "inverse-primary": "#b4c5ff", "surface-container-high": "#dce9ff", "surface-container": "#e5eeff", "primary-container": "#2563eb", "on-secondary-fixed-variant": "#3f465c", "secondary-container": "#dae2fd", "outline": "#737686", "primary": "#004ac6", "inverse-surface": "#213145", "on-tertiary": "#ffffff", "on-error-container": "#93000a", "surface-container-highest": "#d3e4fe", "inverse-on-surface": "#eaf1ff", "on-primary-fixed-variant": "#003ea8", "tertiary-fixed": "#6ffbbe", "on-tertiary-fixed-variant": "#005236", "on-surface": "#0b1c30", "on-secondary-container": "#5c647a", "on-primary": "#ffffff", "surface": "#f8f9ff", "background": "#f8f9ff", "error": "#ba1a1a", "on-secondary-fixed": "#131b2e", "on-background": "#0b1c30", "on-tertiary-fixed": "#002113", "tertiary-fixed-dim": "#4edea3", "primary-fixed-dim": "#b4c5ff", "surface-container-low": "#eff4ff", "on-primary-container": "#eeefff", "outline-variant": "#c3c6d7", "tertiary": "#006242", "surface-dim": "#cbdbf5", "tertiary-container": "#007d55", "secondary": "#565e74", "surface-bright": "#f8f9ff", "on-error": "#ffffff", "primary-fixed": "#dbe1ff", "on-surface-variant": "#434655", "on-tertiary-container": "#bdffdb", "on-primary-fixed": "#00174b", "surface-container-lowest": "#ffffff", "surface-tint": "#0053db", "error-container": "#ffdad6", "surface-variant": "#d3e4fe", "secondary-fixed": "#dae2fd" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "margin-lg": "2rem", "space-md": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "gutter": "1rem", "gutter-lg": "1.5rem", "space-xl": "2rem" }, fontFamily: { "body-sm": ["Inter"], "label-md": ["Inter"], "headline-md": ["Inter"], "headline-xl": ["Inter"], "label-lg": ["Inter"], "code-sm": ["JetBrains Mono"], "body-md": ["Inter"], "headline-lg": ["Inter"], "code-md": ["JetBrains Mono"], "body-lg": ["Inter"] }, fontSize: { "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }], "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }], "headline-md": ["18px", { lineHeight: "24px", fontWeight: "600" }], "headline-xl": ["32px", { lineHeight: "40px", fontWeight: "700" }], "label-lg": ["14px", { lineHeight: "20px", fontWeight: "500" }], "code-sm": ["11px", { lineHeight: "14px", fontWeight: "400" }], "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }], "headline-lg": ["24px", { lineHeight: "32px", fontWeight: "600" }], "code-md": ["13px", { lineHeight: "18px", fontWeight: "500" }], "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-inverse-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-14 px-space-md flex items-center gap-space-sm bg-inverse-surface"><img alt="CrossCloud Registry Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W-4FDEw452upWPbwGsbUExFm_jlChbRJTj1WVjO-4hqlOXqQ5nsCDQPwyfkHZNhlFuY31p_KnftoNnil82OyLwJL3sAnEBBN2fcHbh1Jb8CCq6gcg3VKrHLLL0DYTJjxyzSDe65arQyImWDQMYRoX9g5rW3gUUXac5XTbLAGICmwFDDvFCyGxZKOvzZZvkrAlpzP0z2nef0pCXIvTl4IQrEGu2yRdZ7w5zQ7Fywm0QTMFX2UWfkinzMQ"/><div class="flex flex-col"><span class="font-label-lg text-label-lg font-semibold text-inverse-on-surface leading-tight tracking-tight">CrossCloud Registry</span><span class="font-code-sm text-code-sm text-inverse-primary leading-none">Consul Engine v1.18.2</span></div></div><nav class="flex flex-col gap-space-xs px-space-sm mt-space-md" data-active-classes="bg-primary-container text-on-primary-container font-label-lg rounded-lg shadow-sm"><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="overview" href="index.html"><span class="material-symbols-outlined text-[20px]">grid_view</span><span>Overview</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="service-registry" href="service-registry.html"><span class="material-symbols-outlined text-[20px]">dns</span><span>Service Registry</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="service-discovery" href="service-discovery.html"><span class="material-symbols-outlined text-[20px]">radar</span><span>Service Discovery</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="health-monitoring" href="health-monitoring.html"><span class="material-symbols-outlined text-[20px]">monitor_heart</span><span>Health Monitoring</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="settings" href="settings.html"><span class="material-symbols-outlined text-[20px]">settings</span><span>Settings</span></a></nav></div><div class="p-space-sm m-space-sm rounded-lg bg-surface-container-high/10 flex flex-col gap-space-xs"><div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary-fixed"></span></span><span class="font-code-sm text-code-sm uppercase font-semibold text-tertiary-fixed">CONNECTED</span></div><span class="font-code-sm text-code-sm text-inverse-on-surface/60">5s sync</span></div><div class="font-code-sm text-code-sm text-inverse-on-surface/70 truncate">Leader: <span class="text-inverse-on-surface font-code-sm text-code-sm">consul-core-01</span></div><div class="font-code-sm text-code-sm text-inverse-on-surface/50">Datacenter: us-east-1</div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low"><span class="material-symbols-outlined text-primary text-[18px]">hub</span><span class="font-label-md text-label-md text-on-surface font-medium">Production Cluster:</span><span class="font-code-sm text-code-sm text-primary font-medium">multi-cloud-mesh-prod</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container"><span class="material-symbols-outlined text-secondary text-[16px]">public</span><span class="font-code-sm text-code-sm text-on-surface-variant font-medium">global-wan</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface-variant"><span class="material-symbols-outlined text-[16px]">terminal</span><span class="font-code-sm text-code-sm">Express API: http://localhost:5000</span><span class="inline-block w-2 h-2 rounded-full bg-tertiary-container"></span></div><button class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface text-on-surface-variant hover:text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors"><span class="material-symbols-outlined text-[18px]">search</span><span class="font-label-md text-label-md">Search</span><kbd class="px-space-xs py-0.5 text-[10px] font-code-sm bg-surface-container text-on-surface-variant rounded">⌘K</kbd></button><div class="relative flex items-center justify-center"><button class="p-space-xs rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span></button><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-error"></span></div><div class="flex items-center gap-space-sm pl-space-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden lg:flex flex-col text-left"><span class="font-label-md text-label-md font-medium text-on-surface leading-tight">Admin Engineer</span><span class="font-code-sm text-code-sm text-secondary leading-tight">mesh-admin</span></div></div></div></header><main class="relative pt-14 w-full min-h-screen bg-surface px-space-lg py-space-lg"><div class="flex flex-col w-full gap-space-lg">
+<!-- Active Sidebar Highlighter Micro-Script (Matches shell state) -->
+<script>
+    (function highlightActiveNav() {
+      try {
+        const navLinks = document.querySelectorAll('aside nav a');
+        navLinks.forEach(link => {
+          const isHealth = link.getAttribute('data-path') === 'health-monitoring';
+          if (isHealth) {
+            link.className = 'flex items-center gap-space-sm px-space-sm py-space-xs bg-primary-container text-on-primary-container font-label-lg text-label-lg rounded-lg shadow-sm transition-colors';
+          } else {
+            link.className = 'flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg';
+          }
+        });
+      } catch (e) {
+        console.warn('Navigation highlight synchronized.');
+      }
+    })();
+  </script>
+<!-- TOP HEADER AREA -->
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md pb-space-xs">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-container-high text-primary font-code-sm text-code-sm tracking-wide uppercase font-semibold">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+          Consul Health Subsystem
+        </span>
+<span class="text-outline text-body-sm font-body-sm">•</span>
+<span class="text-on-surface-variant font-code-sm text-code-sm">AGENT TELEMETRY v1.18.2 / HEALTH MONITORING</span>
+</div>
+<h1 class="text-headline-xl font-headline-xl text-on-surface tracking-tight mt-0.5">Health Monitoring</h1>
+<p class="text-body-md font-body-md text-on-surface-variant">Monitor service health, availability, and health-check results across AWS, GCP, and Azure in real-time.</p>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-secondary font-code-sm text-code-sm shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-primary">api</span>
+<span class="font-medium text-on-surface">GET /v1/health/state/any</span>
+</div>
+<button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-on-surface text-label-lg font-label-lg shadow-sm transition-all duration-150" id="manual-probe-btn" onclick="triggerManualProbe()">
+<span class="material-symbols-outlined text-[18px] text-secondary">sensors</span>
+<span>Trigger Manual Probe</span>
+</button>
+<button class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary-container text-on-primary-container hover:bg-primary text-label-lg font-label-lg shadow-sm transition-all duration-150" id="refresh-checks-btn" onclick="refreshChecksUI()">
+<span class="material-symbols-outlined text-[18px]" id="refresh-spinner">sync</span>
+<span>Refresh Health Checks</span>
+<span class="inline-flex items-center gap-1 text-[11px] font-code-sm px-1.5 py-0.5 rounded bg-on-primary-container/20 text-on-primary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed animate-ping"></span>
+<span>10s auto</span>
+</span>
+</button>
+</div>
+</div>
+<!-- 4 SUMMARY STAT CARDS -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Card 1: Total Services -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="text-label-md font-label-md uppercase tracking-wider text-outline font-semibold">Total Services</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="text-headline-xl font-headline-xl text-on-surface">3</span>
+<span class="text-label-lg font-label-lg text-secondary font-medium">Active</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">dns</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between bg-surface-container-low px-2.5 py-1.5 rounded-lg text-code-sm font-code-sm text-on-surface-variant">
+<span>AWS (1)</span>
+<span>•</span>
+<span>GCP (1)</span>
+<span>•</span>
+<span>Azure (1)</span>
+</div>
+</div>
+<!-- Card 2: Healthy Services -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="text-label-md font-label-md uppercase tracking-wider text-outline font-semibold">Healthy Services</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="text-headline-xl font-headline-xl text-on-surface">2</span>
+<span class="text-label-lg font-label-lg text-tertiary font-semibold">Passing</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[22px]">check_circle</span>
+</div>
+</div>
+<div class="mt-4 flex items-center justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant">HTTP 200 OK • Nominal</span>
+<span class="inline-flex items-center text-code-sm font-code-sm font-medium px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary">
+          +66.7% Avail
+        </span>
+</div>
+</div>
+<!-- Card 3: Unhealthy Services -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="text-label-md font-label-md uppercase tracking-wider text-outline font-semibold">Unhealthy Services</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="text-headline-xl font-headline-xl text-error">1</span>
+<span class="text-label-lg font-label-lg text-error font-semibold">Critical</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-lg bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-[22px]">warning</span>
+</div>
+</div>
+<div class="mt-4 flex items-center justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant truncate">Order Service (503 error)</span>
+<span class="inline-flex items-center text-code-sm font-code-sm font-medium px-2 py-0.5 rounded-full bg-error-container text-on-error-container">
+          Attention Req.
+        </span>
+</div>
+</div>
+<!-- Card 4: Overall Health SLA -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="text-label-md font-label-md uppercase tracking-wider text-outline font-semibold">Overall Health SLA</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="text-headline-xl font-headline-xl text-on-surface">66.7%</span>
+<span class="text-code-sm font-code-sm text-outline">Target: 99.95%</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">ecg_heart</span>
+</div>
+</div>
+<div class="mt-4 flex flex-col gap-1.5">
+<div class="w-full h-2 rounded-full bg-surface-container-high overflow-hidden flex">
+<div class="h-full bg-tertiary-container rounded-l-full transition-all duration-500" style="width: 66.7%"></div>
+<div class="h-full bg-error rounded-r-full transition-all duration-500" style="width: 33.3%"></div>
+</div>
+<div class="flex items-center justify-between text-code-sm font-code-sm text-outline">
+<span class="text-tertiary font-medium">2 passing</span>
+<span class="text-error font-medium">1 critical</span>
+</div>
+</div>
+</div>
+</div>
+<!-- MAIN 2-COLUMN GRID (8 cols left, 4 cols right) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- LEFT COLUMN (8 cols): Service Health Table & Selected Service Details Panel -->
+<div class="lg:col-span-8 flex flex-col gap-space-lg min-w-0">
+<!-- A. Service Health Table Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Table Header & Filters -->
+<div class="p-space-md sm:p-space-lg flex flex-col sm:flex-row sm:items-center justify-between gap-space-md bg-surface-container-low/40">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">monitor_heart</span>
+<h2 class="text-headline-md font-headline-md text-on-surface tracking-tight">Service Health &amp; Probe Registry</h2>
+</div>
+<span class="text-body-sm font-body-sm text-on-surface-variant">Live ping results aggregated from Consul local agent daemons</span>
+</div>
+<!-- Search Filter -->
+<div class="relative w-full sm:w-64">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full pl-8 pr-3 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-sm text-body-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40" id="service-filter-input" oninput="filterServices(this.value)" placeholder="Filter checks..." type="text"/>
+</div>
+</div>
+<!-- Filter Pill Tabs -->
+<div class="px-space-md sm:px-space-lg py-2.5 bg-surface-container-low/80 flex flex-wrap items-center gap-2">
+<button class="px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-primary-container text-on-primary-container transition-colors" id="tab-all" onclick="setFilterCategory('all')">
+            All (3)
+          </button>
+<button class="px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors" id="tab-aws" onclick="setFilterCategory('aws')">
+            AWS (1)
+          </button>
+<button class="px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors" id="tab-gcp" onclick="setFilterCategory('gcp')">
+            GCP (1)
+          </button>
+<button class="px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors" id="tab-azure" onclick="setFilterCategory('azure')">
+            Azure (1)
+          </button>
+<button class="px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-error-container text-on-error-container hover:opacity-90 transition-colors flex items-center gap-1" id="tab-failing" onclick="setFilterCategory('failing')">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+            Failing Only (1)
+          </button>
+</div>
+<!-- Data Table Container -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse min-w-[700px]">
+<thead>
+<tr class="bg-surface-container-low text-outline font-code-sm text-code-sm uppercase tracking-wider">
+<th class="py-3 px-space-md font-semibold">Service Name</th>
+<th class="py-3 px-space-md font-semibold">Provider / Region</th>
+<th class="py-3 px-space-md font-semibold">IP &amp; Port</th>
+<th class="py-3 px-space-md font-semibold">Endpoint</th>
+<th class="py-3 px-space-md font-semibold">Last Check</th>
+<th class="py-3 px-space-md font-semibold">Latency</th>
+<th class="py-3 px-space-md font-semibold">Status</th>
+<th class="py-3 px-space-md font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="text-body-sm font-body-sm divide-y-0" id="services-table-body">
+<!-- Row 1: User Service (AWS) -->
+<tr class="hover:bg-surface-container-low/50 transition-colors cursor-pointer group" data-cloud="aws" data-service="user" data-status="healthy" onclick="selectService('user')">
+<td class="py-3.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-medium text-on-surface group-hover:text-primary transition-colors">User Service</span>
+<span class="font-code-sm text-code-sm text-outline">user-01</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-space-md">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-code-sm text-code-sm font-semibold bg-[#FFF7ED] text-[#C2410C]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#EA580C]"></span>
+                    AWS us-east-1
+                  </span>
+</td>
+<td class="py-3.5 px-space-md font-code-sm text-code-sm text-on-surface">10.0.1.10:8001</td>
+<td class="py-3.5 px-space-md">
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface-variant">/health</span>
+</td>
+<td class="py-3.5 px-space-md text-outline font-code-sm text-code-sm">2s ago</td>
+<td class="py-3.5 px-space-md">
+<span class="px-2 py-0.5 rounded-full bg-surface-container font-code-sm text-code-sm text-on-surface font-medium">22ms</span>
+</td>
+<td class="py-3.5 px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-md text-label-md font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                    Healthy (Passing)
+                  </span>
+</td>
+<td class="py-3.5 px-space-md text-right">
+<div class="inline-flex items-center gap-1.5">
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-code-sm font-code-sm font-medium transition-colors" onclick="event.stopPropagation(); selectService('user')">Inspect</button>
+<button class="p-1 rounded text-outline hover:text-primary hover:bg-surface-container transition-colors" onclick="event.stopPropagation(); pingSingleService('user-01')" title="Probe Now">
+<span class="material-symbols-outlined text-[18px]">cached</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Payment Service (GCP) -->
+<tr class="hover:bg-surface-container-low/50 transition-colors cursor-pointer group" data-cloud="gcp" data-service="payment" data-status="healthy" onclick="selectService('payment')">
+<td class="py-3.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-medium text-on-surface group-hover:text-primary transition-colors">Payment Service</span>
+<span class="font-code-sm text-code-sm text-outline">payment-01</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-space-md">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-code-sm text-code-sm font-semibold bg-[#F0FDF4] text-[#15803D]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#16A34A]"></span>
+                    GCP us-central1
+                  </span>
+</td>
+<td class="py-3.5 px-space-md font-code-sm text-code-sm text-on-surface">10.0.1.20:8002</td>
+<td class="py-3.5 px-space-md">
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface-variant">/health</span>
+</td>
+<td class="py-3.5 px-space-md text-outline font-code-sm text-code-sm">4s ago</td>
+<td class="py-3.5 px-space-md">
+<span class="px-2 py-0.5 rounded-full bg-surface-container font-code-sm text-code-sm text-on-surface font-medium">19ms</span>
+</td>
+<td class="py-3.5 px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-md text-label-md font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                    Healthy (Passing)
+                  </span>
+</td>
+<td class="py-3.5 px-space-md text-right">
+<div class="inline-flex items-center gap-1.5">
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-code-sm font-code-sm font-medium transition-colors" onclick="event.stopPropagation(); selectService('payment')">Inspect</button>
+<button class="p-1 rounded text-outline hover:text-primary hover:bg-surface-container transition-colors" onclick="event.stopPropagation(); pingSingleService('payment-01')" title="Probe Now">
+<span class="material-symbols-outlined text-[18px]">cached</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3: Order Service (Azure - FAILING) -->
+<tr class="bg-error-container/20 hover:bg-error-container/30 transition-colors cursor-pointer group" data-cloud="azure" data-service="order" data-status="failing" onclick="selectService('order')">
+<td class="py-3.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-error"></span>
+</span>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg font-semibold text-error group-hover:underline">Order Service</span>
+<span class="font-code-sm text-code-sm text-error/80">order-01</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-space-md">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-code-sm text-code-sm font-semibold bg-[#F0F9FF] text-[#0369A1]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#0284C7]"></span>
+                    Azure East US 2
+                  </span>
+</td>
+<td class="py-3.5 px-space-md font-code-sm text-code-sm text-on-surface">10.0.1.30:8003</td>
+<td class="py-3.5 px-space-md">
+<span class="px-2 py-0.5 rounded bg-error-container font-code-sm text-code-sm text-on-error-container font-medium">/health</span>
+</td>
+<td class="py-3.5 px-space-md text-error font-code-sm text-code-sm font-semibold">1s ago</td>
+<td class="py-3.5 px-space-md">
+<span class="px-2 py-0.5 rounded-full bg-error text-on-error font-code-sm text-code-sm font-semibold">TIMEOUT / 503</span>
+</td>
+<td class="py-3.5 px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container font-label-md text-label-md font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                    Unhealthy (Failing)
+                  </span>
+</td>
+<td class="py-3.5 px-space-md text-right">
+<div class="inline-flex items-center gap-1.5">
+<button class="px-2.5 py-1 rounded bg-error text-on-error text-code-sm font-code-sm font-medium hover:bg-error/90 transition-colors" onclick="event.stopPropagation(); selectService('order')">Inspect</button>
+<button class="p-1 rounded text-error hover:bg-error-container transition-colors" onclick="event.stopPropagation(); pingSingleService('order-01')" title="Probe Now">
+<span class="material-symbols-outlined text-[18px]">cached</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Summary Bar -->
+<div class="px-space-md py-2.5 bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between text-code-sm font-code-sm text-on-surface-variant gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-tertiary">verified_user</span>
+<span>Consul Agent Serf Gossip: 0 degraded clusters</span>
+</div>
+<div class="flex items-center gap-3">
+<span>DNS TTL: <strong>1s</strong></span>
+<span>•</span>
+<span>Health Check Grace: <strong>5000ms</strong></span>
+</div>
+</div>
+</div>
+<!-- B. Selected Service Details Panel -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md relative overflow-hidden transition-all duration-200" id="service-inspector-card">
+<!-- Inspector Top Cluster -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-error-container flex items-center justify-center text-error" id="inspector-badge-icon">
+<span class="material-symbols-outlined text-[24px]">troubleshoot</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h3 class="text-headline-md font-headline-md text-on-surface" id="inspector-title">Service Probe Inspector: Order Service (order-01)</h3>
+</div>
+<span class="text-body-sm font-body-sm text-on-surface-variant" id="inspector-subtitle">Direct Consul Serf Health &amp; HTTP Diagnostic Stream</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 rounded-full bg-error-container text-on-error-container font-code-sm text-code-sm font-bold flex items-center gap-1.5" id="inspector-status-badge">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+              CRITICAL / HTTP 503
+            </span>
+</div>
+</div>
+<!-- Details Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md bg-surface-container-low/50 p-space-md rounded-lg">
+<div class="flex flex-col gap-1">
+<span class="text-label-md font-label-md uppercase text-outline font-semibold">Health Endpoint URL</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">link</span>
+<code class="font-code-sm text-code-sm text-on-surface font-semibold bg-surface-container px-2 py-0.5 rounded" id="inspector-url">http://10.0.1.30:8003/health</code>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-md font-label-md uppercase text-outline font-semibold">Cloud &amp; Host Machine</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-secondary">cloud</span>
+<span class="font-code-sm text-code-sm text-on-surface" id="inspector-host">Microsoft Azure • VM <code class="font-semibold">vm-order-srv-01</code> (azure-eastus-2)</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-md font-label-md uppercase text-outline font-semibold">Probe Protocol Specification</span>
+<div class="text-body-sm font-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="font-code-sm text-code-sm px-1.5 py-0.2 bg-surface-container rounded text-primary font-medium">HTTP GET</span>
+<span>Interval: 10s • Timeout: 2.5s • Deregister: 5m</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-md font-label-md uppercase text-outline font-semibold">Consul Check Identifier</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">fingerprint</span>
+<code class="font-code-sm text-code-sm text-outline font-medium" id="inspector-check-id">service:order-01:serfHealth</code>
+</div>
+</div>
+</div>
+<!-- Terminal Diagnostic Output Box -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<span class="text-label-md font-label-md uppercase text-outline font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">terminal</span>
+              Last Agent Check Response / Stack Diagnostic
+            </span>
+<span class="font-code-sm text-code-sm text-outline">exit code: 2 (CRITICAL)</span>
+</div>
+<div class="bg-inverse-surface text-inverse-on-surface p-space-md rounded-lg font-code-sm text-code-sm flex flex-col gap-1.5 overflow-x-auto shadow-inner" id="inspector-terminal">
+<div class="flex items-center gap-2 text-error font-semibold">
+<span>[FAIL]</span>
+<span>HTTP GET /health returned 503 Service Unavailable</span>
+</div>
+<div class="text-inverse-on-surface/80 leading-relaxed pl-6">
+              Diagnostic: Connection refused by downstream PostgreSQL database replica (cosmos-db-unreachable at 10.0.3.15:5432). Upstream circuit breaker OPEN.
+            </div>
+<div class="text-inverse-primary/60 text-[10px] pl-6">
+              Trace: req_id=01H8K49Z • check_timestamp=2025-05-18T14:02:45.102Z • agent_datacenter=azure-eastus-2
+            </div>
+</div>
+</div>
+<!-- Inspector Action Buttons -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-2">
+<button class="px-3 py-2 rounded-lg bg-primary-container hover:bg-primary text-on-primary-container text-label-lg font-label-lg shadow-sm flex items-center gap-1.5 transition-colors" onclick="pingSingleService('selected')">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+<span>Run Immediate Check</span>
+</button>
+<button class="px-3 py-2 rounded-lg bg-error-container hover:bg-error/20 text-on-error-container text-label-lg font-label-lg transition-colors flex items-center gap-1.5" onclick="alert('Draining order-01: Node will be deregistered from Consul Core DNS catalogs.')">
+<span class="material-symbols-outlined text-[18px]">block</span>
+<span>Drain Node from DNS</span>
+</button>
+</div>
+<a class="inline-flex items-center gap-1 text-primary hover:text-primary-container font-label-md text-label-md transition-colors" href="#">
+<span>View Cloud Telemetry (Azure Portal)</span>
+<span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN (4 cols): Recent Health Activity & Express/Consul Helper -->
+<div class="lg:col-span-4 flex flex-col gap-space-lg min-w-0">
+<!-- C. Recent Health-Check Activity Feed -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">dynamic_feed</span>
+<h3 class="text-headline-md font-headline-md text-on-surface">Health Activity</h3>
+</div>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-code-sm text-code-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+            Live Stream
+          </span>
+</div>
+<!-- Activity Timeline Stream -->
+<div class="flex flex-col gap-space-md relative pl-2">
+<!-- Event 1: Failed -->
+<div class="flex items-start gap-3 relative">
+<div class="w-7 h-7 rounded-full bg-error-container text-error flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">priority_high</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="text-label-md font-label-md font-semibold text-error">Check Failed</span>
+<span class="font-code-sm text-code-sm text-outline">14:02:45</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface">
+<strong>Order Service (Azure East US 2)</strong> returned HTTP 503. Attempt 3/3 failed. Excluded from DNS round-robin.
+              </p>
+</div>
+</div>
+<!-- Event 2: Passed -->
+<div class="flex items-start gap-3 relative">
+<div class="w-7 h-7 rounded-full bg-tertiary/10 text-tertiary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="text-label-md font-label-md font-semibold text-tertiary">Check Passed</span>
+<span class="font-code-sm text-code-sm text-outline">14:02:40</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface">
+<strong>Payment Service (GCP us-central1)</strong> - HTTP 200 OK (Latency: 18ms). All check scripts passing.
+              </p>
+</div>
+</div>
+<!-- Event 3: Passed -->
+<div class="flex items-start gap-3 relative">
+<div class="w-7 h-7 rounded-full bg-tertiary/10 text-tertiary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="text-label-md font-label-md font-semibold text-tertiary">Check Passed</span>
+<span class="font-code-sm text-code-sm text-outline">14:02:38</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface">
+<strong>User Service (AWS us-east-1)</strong> - HTTP 200 OK (Latency: 22ms). Redis &amp; PostgreSQL reachable.
+              </p>
+</div>
+</div>
+<!-- Event 4: Scheduled TTL -->
+<div class="flex items-start gap-3 relative">
+<div class="w-7 h-7 rounded-full bg-surface-container-high text-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="text-label-md font-label-md font-semibold text-on-surface">Health Check Scheduled</span>
+<span class="font-code-sm text-code-sm text-outline">14:02:30</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">
+                Consul agent executed TTL periodic check cycle across 3 registered cluster nodes.
+              </p>
+</div>
+</div>
+<!-- Event 5: Probe Warning -->
+<div class="flex items-start gap-3 relative">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-secondary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">report_problem</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="text-label-md font-label-md font-semibold text-secondary">Probe Warning</span>
+<span class="font-code-sm text-code-sm text-outline">14:02:15</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">
+                Order Service degradation detected (response spiked to 980ms prior to timeout).
+              </p>
+</div>
+</div>
+<!-- Event 6: WAN Sync Nominal -->
+<div class="flex items-start gap-3 relative">
+<div class="w-7 h-7 rounded-full bg-surface-container text-outline flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">public</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="text-label-md font-label-md font-semibold text-on-surface">WAN Gossip Sync</span>
+<span class="font-code-sm text-code-sm text-outline">14:01:50</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">
+                Cross-cloud sync latency 14.2ms across AWS, GCP, and Azure datacenters.
+              </p>
+</div>
+</div>
+</div>
+</div>
+<!-- D. Node.js Express / Consul Integration Helper Snippet -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">integration_instructions</span>
+<h3 class="text-headline-md font-headline-md text-on-surface">Express.js Integration</h3>
+</div>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container text-primary font-semibold">Node.js API</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">
+          Sample backend route demonstrating how your Express gateway pulls only healthy, passing services from Consul:
+        </p>
+<!-- Code Block -->
+<div class="bg-inverse-surface rounded-lg p-space-md text-inverse-on-surface font-code-sm text-code-sm overflow-x-auto shadow-inner relative group">
+<div class="flex items-center justify-between pb-2 text-[10px] text-inverse-on-surface/50 border-b border-inverse-on-surface/10 mb-2">
+<span>routes/health.js</span>
+<button class="text-inverse-primary hover:text-white transition-colors flex items-center gap-1" onclick="copySnippetCode()">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+<span id="copy-text">Copy</span>
+</button>
+</div>
+<pre class="font-code-sm leading-relaxed text-[12px]"><span class="text-inverse-primary">const</span> express = require(<span class="text-tertiary-fixed">'express'</span>);
+<span class="text-inverse-primary">const</span> axios = require(<span class="text-tertiary-fixed">'axios'</span>);
+<span class="text-inverse-primary">const</span> router = express.Router();
+
+<span class="text-inverse-on-surface/50">// Query passing instances for active mesh routing</span>
+router.get(<span class="text-tertiary-fixed">'/api/health/:service'</span>, <span class="text-inverse-primary">async</span> (req, res) =&gt; {
+  <span class="text-inverse-primary">try</span> {
+    <span class="text-inverse-primary">const</span> { service } = req.params;
+    <span class="text-inverse-primary">const</span> consulRes = <span class="text-inverse-primary">await</span> axios.get(
+      <span class="text-tertiary-fixed">`http://localhost:8500/v1/health/service/<span class="text-inverse-primary">${service}</span>?passing=true`</span>
+    );
+    <span class="text-inverse-primary">return</span> res.json({
+      status: <span class="text-tertiary-fixed">'healthy'</span>,
+      healthyNodes: consulRes.data.length,
+      instances: consulRes.data.map(i =&gt; ({
+        id: i.Service.ID,
+        address: i.Service.Address,
+        port: i.Service.Port
+      }))
+    });
+  } <span class="text-inverse-primary">catch</span> (err) {
+    res.status(<span class="text-secondary-fixed">500</span>).json({ error: err.message });
+  }
+});</pre>
+</div>
+<div class="flex items-center gap-2 pt-1 text-code-sm font-code-sm text-outline">
+<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+<span>Validated for Student Evaluation v1.18</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Client-side Interactive Behavior -->
+<script>
+    // State definitions
+    const serviceData = {
+      order: {
+        title: 'Service Probe Inspector: Order Service (order-01)',
+        subtitle: 'Direct Consul Serf Health & HTTP Diagnostic Stream',
+        url: 'http://10.0.1.30:8003/health',
+        host: 'Microsoft Azure • VM vm-order-srv-01 (azure-eastus-2)',
+        checkId: 'service:order-01:serfHealth',
+        badge: 'CRITICAL / HTTP 503',
+        isFailing: true,
+        terminal: `
+          <div class="flex items-center gap-2 text-error font-semibold">
+            <span>[FAIL]</span>
+            <span>HTTP GET /health returned 503 Service Unavailable</span>
+          </div>
+          <div class="text-inverse-on-surface/80 leading-relaxed pl-6">
+            Diagnostic: Connection refused by downstream PostgreSQL database replica (cosmos-db-unreachable at 10.0.3.15:5432). Upstream circuit breaker OPEN.
+          </div>
+          <div class="text-inverse-primary/60 text-[10px] pl-6">
+            Trace: req_id=01H8K49Z • check_timestamp=${new Date().toISOString()} • agent_datacenter=azure-eastus-2
+          </div>
+        `
+      },
+      user: {
+        title: 'Service Probe Inspector: User Service (user-01)',
+        subtitle: 'Telemetry nominal • Serf cluster quorum synchronized',
+        url: 'http://10.0.1.10:8001/health',
+        host: 'Amazon Web Services (AWS) • EC2 i-07e1a3bc4d8 (us-east-1)',
+        checkId: 'service:user-01:serfHealth',
+        badge: 'NOMINAL / HTTP 200 OK',
+        isFailing: false,
+        terminal: `
+          <div class="flex items-center gap-2 text-tertiary-fixed font-semibold">
+            <span>[PASS]</span>
+            <span>HTTP GET /health returned 200 OK (latency: 22ms)</span>
+          </div>
+          <div class="text-inverse-on-surface/80 leading-relaxed pl-6">
+            Service report: { "status": "UP", "redis_cache": "CONNECTED", "users_db": "SYNCHRONIZED", "mem_util": "38%" }
+          </div>
+          <div class="text-inverse-primary/60 text-[10px] pl-6">
+            Trace: req_id=01H8K48A • check_timestamp=${new Date().toISOString()} • agent_datacenter=us-east-1
+          </div>
+        `
+      },
+      payment: {
+        title: 'Service Probe Inspector: Payment Service (payment-01)',
+        subtitle: 'Telemetry nominal • Serf cluster quorum synchronized',
+        url: 'http://10.0.1.20:8002/health',
+        host: 'Google Cloud Platform (GCP) • Compute gce-pay-prod-01 (us-central1)',
+        checkId: 'service:payment-01:serfHealth',
+        badge: 'NOMINAL / HTTP 200 OK',
+        isFailing: false,
+        terminal: `
+          <div class="flex items-center gap-2 text-tertiary-fixed font-semibold">
+            <span>[PASS]</span>
+            <span>HTTP GET /health returned 200 OK (latency: 19ms)</span>
+          </div>
+          <div class="text-inverse-on-surface/80 leading-relaxed pl-6">
+            Service report: { "status": "UP", "pci_compliance_token": "VALID", "stripe_gateway": "ONLINE", "circuit_breaker": "CLOSED" }
+          </div>
+          <div class="text-inverse-primary/60 text-[10px] pl-6">
+            Trace: req_id=01H8K47C • check_timestamp=${new Date().toISOString()} • agent_datacenter=us-central1
+          </div>
+        `
+      }
+    };
+
+    let selectedServiceKey = 'order';
+
+    function selectService(key) {
+      const data = serviceData[key];
+      if (!data) return;
+      selectedServiceKey = key;
+
+      document.getElementById('inspector-title').textContent = data.title;
+      document.getElementById('inspector-subtitle').textContent = data.subtitle;
+      document.getElementById('inspector-url').textContent = data.url;
+      document.getElementById('inspector-host').textContent = data.host;
+      document.getElementById('inspector-check-id').textContent = data.checkId;
+      document.getElementById('inspector-terminal').innerHTML = data.terminal;
+
+      const badge = document.getElementById('inspector-status-badge');
+      const badgeIcon = document.getElementById('inspector-badge-icon');
+
+      if (data.isFailing) {
+        badge.className = 'px-3 py-1 rounded-full bg-error-container text-on-error-container font-code-sm text-code-sm font-bold flex items-center gap-1.5';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>' + data.badge;
+        badgeIcon.className = 'w-10 h-10 rounded-lg bg-error-container flex items-center justify-center text-error';
+        badgeIcon.innerHTML = '<span class="material-symbols-outlined text-[24px]">troubleshoot</span>';
+      } else {
+        badge.className = 'px-3 py-1 rounded-full bg-tertiary/10 text-tertiary font-code-sm text-code-sm font-bold flex items-center gap-1.5';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-tertiary"></span>' + data.badge;
+        badgeIcon.className = 'w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary';
+        badgeIcon.innerHTML = '<span class="material-symbols-outlined text-[24px]">verified</span>';
+      }
+    }
+
+    function setFilterCategory(category) {
+      const tabs = ['all', 'aws', 'gcp', 'azure', 'failing'];
+      tabs.forEach(tab => {
+        const btn = document.getElementById('tab-' + tab);
+        if (btn) {
+          if (tab === category) {
+            btn.className = tab === 'failing' 
+              ? 'px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-error text-on-error transition-colors flex items-center gap-1'
+              : 'px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-primary-container text-on-primary-container transition-colors';
+          } else {
+            btn.className = tab === 'failing'
+              ? 'px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-error-container text-on-error-container hover:opacity-90 transition-colors flex items-center gap-1'
+              : 'px-2.5 py-1 rounded-md text-code-sm font-code-sm font-medium bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors';
+          }
+        }
+      });
+
+      const rows = document.querySelectorAll('#services-table-body tr');
+      rows.forEach(row => {
+        const cloud = row.getAttribute('data-cloud');
+        const status = row.getAttribute('data-status');
+        if (category === 'all') {
+          row.style.display = '';
+        } else if (category === 'failing') {
+          row.style.display = (status === 'failing') ? '' : 'none';
+        } else {
+          row.style.display = (cloud === category) ? '' : 'none';
+        }
+      });
+    }
+
+    function filterServices(query) {
+      const q = query.toLowerCase().trim();
+      const rows = document.querySelectorAll('#services-table-body tr');
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    function triggerManualProbe() {
+      const btn = document.getElementById('manual-probe-btn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span><span>Probing Cluster...</span>';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px] text-tertiary">check</span><span>Probed (3 nodes)</span>';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }, 1500);
+      }, 700);
+    }
+
+    function refreshChecksUI() {
+      const spinner = document.getElementById('refresh-spinner');
+      spinner.classList.add('animate-spin');
+      setTimeout(() => {
+        spinner.classList.remove('animate-spin');
+      }, 800);
+    }
+
+    function pingSingleService(serviceId) {
+      const key = (serviceId === 'selected') ? selectedServiceKey : (serviceId.includes('order') ? 'order' : (serviceId.includes('user') ? 'user' : 'payment'));
+      selectService(key);
+      alert(`Consul probe sent directly to [${serviceId}]. Agent returned HTTP check result.`);
+    }
+
+    function copySnippetCode() {
+      const copyText = document.getElementById('copy-text');
+      copyText.textContent = 'Copied!';
+      setTimeout(() => {
+        copyText.textContent = 'Copy';
+      }, 1800);
+    }
+  </script>
+</div></main></div></body></html>

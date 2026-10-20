@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "secondary-fixed-dim": "#bec6e0", "on-secondary": "#ffffff", "inverse-primary": "#b4c5ff", "surface-container-high": "#dce9ff", "surface-container": "#e5eeff", "primary-container": "#2563eb", "on-secondary-fixed-variant": "#3f465c", "secondary-container": "#dae2fd", "outline": "#737686", "primary": "#004ac6", "inverse-surface": "#213145", "on-tertiary": "#ffffff", "on-error-container": "#93000a", "surface-container-highest": "#d3e4fe", "inverse-on-surface": "#eaf1ff", "on-primary-fixed-variant": "#003ea8", "tertiary-fixed": "#6ffbbe", "on-tertiary-fixed-variant": "#005236", "on-surface": "#0b1c30", "on-secondary-container": "#5c647a", "on-primary": "#ffffff", "surface": "#f8f9ff", "background": "#f8f9ff", "error": "#ba1a1a", "on-secondary-fixed": "#131b2e", "on-background": "#0b1c30", "on-tertiary-fixed": "#002113", "tertiary-fixed-dim": "#4edea3", "primary-fixed-dim": "#b4c5ff", "surface-container-low": "#eff4ff", "on-primary-container": "#eeefff", "outline-variant": "#c3c6d7", "tertiary": "#006242", "surface-dim": "#cbdbf5", "tertiary-container": "#007d55", "secondary": "#565e74", "surface-bright": "#f8f9ff", "on-error": "#ffffff", "primary-fixed": "#dbe1ff", "on-surface-variant": "#434655", "on-tertiary-container": "#bdffdb", "on-primary-fixed": "#00174b", "surface-container-lowest": "#ffffff", "surface-tint": "#0053db", "error-container": "#ffdad6", "surface-variant": "#d3e4fe", "secondary-fixed": "#dae2fd" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "margin-lg": "2rem", "space-md": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "gutter": "1rem", "gutter-lg": "1.5rem", "space-xl": "2rem" }, fontFamily: { "body-sm": ["Inter"], "label-md": ["Inter"], "headline-md": ["Inter"], "headline-xl": ["Inter"], "label-lg": ["Inter"], "code-sm": ["JetBrains Mono"], "body-md": ["Inter"], "headline-lg": ["Inter"], "code-md": ["JetBrains Mono"], "body-lg": ["Inter"] }, fontSize: { "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }], "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }], "headline-md": ["18px", { lineHeight: "24px", fontWeight: "600" }], "headline-xl": ["32px", { lineHeight: "40px", fontWeight: "700" }], "label-lg": ["14px", { lineHeight: "20px", fontWeight: "500" }], "code-sm": ["11px", { lineHeight: "14px", fontWeight: "400" }], "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }], "headline-lg": ["24px", { lineHeight: "32px", fontWeight: "600" }], "code-md": ["13px", { lineHeight: "18px", fontWeight: "500" }], "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-inverse-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-14 px-space-md flex items-center gap-space-sm bg-inverse-surface"><img alt="CrossCloud Registry Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W-4FDEw452upWPbwGsbUExFm_jlChbRJTj1WVjO-4hqlOXqQ5nsCDQPwyfkHZNhlFuY31p_KnftoNnil82OyLwJL3sAnEBBN2fcHbh1Jb8CCq6gcg3VKrHLLL0DYTJjxyzSDe65arQyImWDQMYRoX9g5rW3gUUXac5XTbLAGICmwFDDvFCyGxZKOvzZZvkrAlpzP0z2nef0pCXIvTl4IQrEGu2yRdZ7w5zQ7Fywm0QTMFX2UWfkinzMQ"/><div class="flex flex-col"><span class="font-label-lg text-label-lg font-semibold text-inverse-on-surface leading-tight tracking-tight">CrossCloud Registry</span><span class="font-code-sm text-code-sm text-inverse-primary leading-none">Consul Engine v1.18.2</span></div></div><nav class="flex flex-col gap-space-xs px-space-sm mt-space-md" data-active-classes="bg-primary-container text-on-primary-container font-label-lg rounded-lg shadow-sm"><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-space-xs transition-colors bg-primary-container text-on-primary-container font-label-lg rounded-lg shadow-sm" data-path="overview" href="index.html"><span class="material-symbols-outlined text-[20px]">grid_view</span><span>Overview</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="service-registry" href="service-registry.html"><span class="material-symbols-outlined text-[20px]">dns</span><span>Service Registry</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="service-discovery" href="service-discovery.html"><span class="material-symbols-outlined text-[20px]">radar</span><span>Service Discovery</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="health-monitoring" href="health-monitoring.html"><span class="material-symbols-outlined text-[20px]">monitor_heart</span><span>Health Monitoring</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="settings" href="settings.html"><span class="material-symbols-outlined text-[20px]">settings</span><span>Settings</span></a></nav></div><div class="p-space-sm m-space-sm rounded-lg bg-surface-container-high/10 flex flex-col gap-space-xs"><div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary-fixed"></span></span><span class="font-code-sm text-code-sm uppercase font-semibold text-tertiary-fixed">CONNECTED</span></div><span class="font-code-sm text-code-sm text-inverse-on-surface/60">5s sync</span></div><div class="font-code-sm text-code-sm text-inverse-on-surface/70 truncate">Leader: <span class="text-inverse-on-surface font-code-sm text-code-sm">consul-core-01</span></div><div class="font-code-sm text-code-sm text-inverse-on-surface/50">Datacenter: us-east-1</div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low"><span class="material-symbols-outlined text-primary text-[18px]">hub</span><span class="font-label-md text-label-md text-on-surface font-medium">Production Cluster:</span><span class="font-code-sm text-code-sm text-primary font-medium">multi-cloud-mesh-prod</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container"><span class="material-symbols-outlined text-secondary text-[16px]">public</span><span class="font-code-sm text-code-sm text-on-surface-variant font-medium">global-wan</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface-variant"><span class="material-symbols-outlined text-[16px]">terminal</span><span class="font-code-sm text-code-sm">Express API: http://localhost:5000</span><span class="inline-block w-2 h-2 rounded-full bg-tertiary-container"></span></div><button class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface text-on-surface-variant hover:text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors"><span class="material-symbols-outlined text-[18px]">search</span><span class="font-label-md text-label-md">Search</span><kbd class="px-space-xs py-0.5 text-[10px] font-code-sm bg-surface-container text-on-surface-variant rounded">⌘K</kbd></button><div class="relative flex items-center justify-center"><button class="p-space-xs rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span></button><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-error"></span></div><div class="flex items-center gap-space-sm pl-space-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden lg:flex flex-col text-left"><span class="font-label-md text-label-md font-medium text-on-surface leading-tight">Admin Engineer</span><span class="font-code-sm text-code-sm text-secondary leading-tight">mesh-admin</span></div></div></div></header><main class="relative pt-14 w-full min-h-screen bg-surface px-space-lg py-space-lg"><div class="flex flex-col w-full gap-space-lg">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-medium">WAN Mesh Active</span>
+<span class="font-code-sm text-code-sm text-secondary">● Protocol Serf v0.10.1</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Cross-Cloud Service Registry</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">Monitor and discover services across cloud environments.</p>
+</div>
+<div class="flex items-center gap-space-sm self-start md:self-auto">
+<button class="flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition-all shadow-sm active:scale-95" id="btn-sync-mesh">
+<span class="material-symbols-outlined text-[18px] text-primary transition-transform duration-700" id="sync-icon">sync</span>
+<span class="font-label-lg text-label-lg font-medium">Sync Consul Mesh</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-primary-container text-on-primary-container hover:bg-primary transition-all shadow-md active:scale-95" id="btn-register-open">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span class="font-label-lg text-label-lg font-medium">+ Register New Service</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<div class="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-surface-container-high/40 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
+<div class="flex items-center justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">dns</span>
+</div>
+<span class="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-surface-container text-primary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> +1 today
+        </span>
+</div>
+<div class="mt-space-md">
+<div class="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Total Services</div>
+<div class="font-headline-xl text-headline-xl text-on-surface mt-1 flex items-baseline gap-2">
+          3 <span class="font-body-md text-body-md text-secondary font-normal">Active</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
+<span>Across 3 Cloud Datacenters</span>
+<span class="text-primary font-medium">100% mesh</span>
+</div>
+</div>
+<div class="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-tertiary-container/10 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
+<div class="flex items-center justify-between">
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[22px]">check_circle</span>
+</div>
+<span class="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> 66.7% operational
+        </span>
+</div>
+<div class="mt-space-md">
+<div class="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Healthy Services</div>
+<div class="font-headline-xl text-headline-xl text-on-surface mt-1 flex items-baseline gap-2">
+          2 <span class="font-body-md text-body-md text-tertiary font-normal">Passing</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
+<span class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[16px]">trending_up</span> Steady ping
+        </span>
+<span class="font-medium text-secondary">TTL 10s check</span>
+</div>
+</div>
+<div class="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-error-container/40 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
+<div class="flex items-center justify-between">
+<div class="w-10 h-10 rounded-lg bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-[22px]">warning</span>
+</div>
+<span class="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-error-container text-on-error-container flex items-center gap-1 animate-pulse">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span> Attention Required
+        </span>
+</div>
+<div class="mt-space-md">
+<div class="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Unhealthy Services</div>
+<div class="font-headline-xl text-headline-xl text-error mt-1 flex items-baseline gap-2">
+          1 <span class="font-body-md text-body-md text-error font-normal">Failing</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
+<span class="text-error font-medium">Azure Order Check 503</span>
+<span class="text-secondary font-medium">2m ago</span>
+</div>
+</div>
+<div class="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-surface-container-highest/60 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
+<div class="flex items-center justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">lan</span>
+</div>
+<span class="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-surface-container-low text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> 14ms avg
+        </span>
+</div>
+<div class="mt-space-md">
+<div class="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Cloud Providers</div>
+<div class="font-headline-xl text-headline-xl text-on-surface mt-1 flex items-baseline gap-2">
+          3 <span class="font-body-md text-body-md text-secondary font-normal">Connected</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
+<span class="font-medium text-on-surface">AWS · GCP · Azure</span>
+<span class="text-primary font-medium">Mesh Linked</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">cloud_sync</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Cloud Provider Breakdown</h2>
+</div>
+<span class="font-code-sm text-code-sm text-secondary">Multi-Datacenter Federation: 3/3 Peers Responding</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<div class="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-all">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface text-[24px]">cloud</span>
+</div>
+<div>
+<div class="font-label-lg text-label-lg font-semibold text-on-surface">Amazon Web Services</div>
+<div class="flex items-center gap-1 mt-0.5">
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> AWS us-east-1
+                </span>
+</div>
+</div>
+</div>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Agent Alive
+          </span>
+</div>
+<div class="mt-space-md grid grid-cols-2 gap-2 bg-surface-container-low/60 p-space-sm rounded-lg">
+<div>
+<div class="font-code-sm text-code-sm text-secondary uppercase">Ingress Latency</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">12 ms</div>
+</div>
+<div>
+<div class="font-code-sm text-code-sm text-secondary uppercase">Health Score</div>
+<div class="font-headline-md text-headline-md text-tertiary font-semibold mt-0.5">100%</div>
+</div>
+</div>
+<div class="mt-space-md flex flex-col gap-1.5 font-code-sm text-code-sm text-on-surface-variant">
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">Registered Service:</span>
+<span class="text-on-surface font-semibold bg-surface-container px-1.5 py-0.5 rounded">User Service</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">VPC ID:</span>
+<span class="text-on-surface">vpc-0921bf3a</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">Security Group:</span>
+<span class="text-on-surface">sg-consul-mesh</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
+<span class="flex items-center gap-1 text-tertiary font-medium">
+<span class="material-symbols-outlined text-[16px]">sensors</span> Gossip Serf OK
+          </span>
+<span class="text-secondary">Node: aws-us-east-srv01</span>
+</div>
+</div>
+<div class="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-all">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface text-[24px]">cloud_queue</span>
+</div>
+<div>
+<div class="font-label-lg text-label-lg font-semibold text-on-surface">Google Cloud Platform</div>
+<div class="flex items-center gap-1 mt-0.5">
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> GCP us-central1
+                </span>
+</div>
+</div>
+</div>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Agent Alive
+          </span>
+</div>
+<div class="mt-space-md grid grid-cols-2 gap-2 bg-surface-container-low/60 p-space-sm rounded-lg">
+<div>
+<div class="font-code-sm text-code-sm text-secondary uppercase">Ingress Latency</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">18 ms</div>
+</div>
+<div>
+<div class="font-code-sm text-code-sm text-secondary uppercase">Health Score</div>
+<div class="font-headline-md text-headline-md text-tertiary font-semibold mt-0.5">100%</div>
+</div>
+</div>
+<div class="mt-space-md flex flex-col gap-1.5 font-code-sm text-code-sm text-on-surface-variant">
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">Registered Service:</span>
+<span class="text-on-surface font-semibold bg-surface-container px-1.5 py-0.5 rounded">Payment Service</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">Project ID:</span>
+<span class="text-on-surface truncate max-w-[150px]">gcp-crosscloud-prod</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">VPC Network:</span>
+<span class="text-on-surface">default-vpc</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
+<span class="flex items-center gap-1 text-tertiary font-medium">
+<span class="material-symbols-outlined text-[16px]">sensors</span> Gossip Serf OK
+          </span>
+<span class="text-secondary">Node: gcp-central-node-02</span>
+</div>
+</div>
+<div class="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-all">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface text-[24px]">cloud_sync</span>
+</div>
+<div>
+<div class="font-label-lg text-label-lg font-semibold text-on-surface">Microsoft Azure</div>
+<div class="flex items-center gap-1 mt-0.5">
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Azure East US 2
+                </span>
+</div>
+</div>
+</div>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-code-sm text-code-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span> Degraded
+          </span>
+</div>
+<div class="mt-space-md grid grid-cols-2 gap-2 bg-surface-container-low/60 p-space-sm rounded-lg">
+<div>
+<div class="font-code-sm text-code-sm text-secondary uppercase">Ingress Latency</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">32 ms</div>
+</div>
+<div>
+<div class="font-code-sm text-code-sm text-secondary uppercase">Health Status</div>
+<div class="font-headline-md text-headline-md text-error font-semibold mt-0.5">1 Failing</div>
+</div>
+</div>
+<div class="mt-space-md flex flex-col gap-1.5 font-code-sm text-code-sm text-on-surface-variant">
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">Registered Service:</span>
+<span class="text-on-surface font-semibold bg-surface-container px-1.5 py-0.5 rounded">Order Service</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">VNet Name:</span>
+<span class="text-on-surface">vnet-azure-mesh</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="text-secondary">Compute VM:</span>
+<span class="text-on-surface">vm-order-srv-01</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
+<span class="flex items-center gap-1 text-error font-medium">
+<span class="material-symbols-outlined text-[16px]">error</span> HTTP 503 Critical
+          </span>
+<span class="text-secondary">Check ID: serfHealth</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<div class="lg:col-span-8 flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-sm">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Registered Cross-Cloud Services</h2>
+<p class="font-body-sm text-body-sm text-secondary">Active nodes resolved via Consul catalog synchronization</p>
+</div>
+<div class="inline-flex p-1 rounded-lg bg-surface-container-low" id="service-filter-tabs">
+<button class="filter-tab px-3 py-1 rounded-md font-code-sm text-code-sm font-medium bg-surface-container-lowest text-primary shadow-sm transition-all" data-filter="all">All (3)</button>
+<button class="filter-tab px-3 py-1 rounded-md font-code-sm text-code-sm font-medium text-secondary hover:text-on-surface transition-all" data-filter="aws">AWS (1)</button>
+<button class="filter-tab px-3 py-1 rounded-md font-code-sm text-code-sm font-medium text-secondary hover:text-on-surface transition-all" data-filter="gcp">GCP (1)</button>
+<button class="filter-tab px-3 py-1 rounded-md font-code-sm text-code-sm font-medium text-secondary hover:text-on-surface transition-all" data-filter="azure">Azure (1)</button>
+</div>
+</div>
+<div class="overflow-x-auto mt-space-sm">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="bg-surface-container-low text-secondary font-code-sm text-code-sm uppercase">
+<th class="py-2.5 px-3 rounded-l-lg">Service Name</th>
+<th class="py-2.5 px-3">Service ID</th>
+<th class="py-2.5 px-3">Cloud Provider</th>
+<th class="py-2.5 px-3">IP Address</th>
+<th class="py-2.5 px-3">Port</th>
+<th class="py-2.5 px-3">Health Status</th>
+<th class="py-2.5 px-3 text-right rounded-r-lg">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y-0" id="services-table-body">
+<tr class="service-row group hover:bg-surface-container-low/50 transition-colors" data-provider="aws">
+<td class="py-3 px-3">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>
+<span class="font-label-lg text-label-lg font-semibold text-on-surface">User Service</span>
+</div>
+</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-secondary">user-01</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container font-medium text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> AWS
+                </span>
+</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-on-surface">10.0.1.10</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-secondary">8001</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
+</span>
+                  Healthy
+                </span>
+</td>
+<td class="py-3 px-3 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2 py-1 rounded bg-surface-container text-primary font-code-sm text-code-sm hover:bg-surface-container-high transition-colors" onclick="handleDnsQuery('user.service.consul', '10.0.1.10:8001')" title="Query DNS via Express">Query DNS</button>
+<button class="px-2 py-1 rounded bg-surface-container text-secondary font-code-sm text-code-sm hover:text-on-surface transition-colors" onclick="handleInspect('user-01')">Inspect</button>
+<button class="px-2 py-1 rounded bg-surface-container text-error font-code-sm text-code-sm hover:bg-error-container transition-colors" onclick="handleDeregister('user-01')">Deregister</button>
+</div>
+</td>
+</tr>
+<tr class="service-row group hover:bg-surface-container-low/50 transition-colors" data-provider="gcp">
+<td class="py-3 px-3">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>
+<span class="font-label-lg text-label-lg font-semibold text-on-surface">Payment Service</span>
+</div>
+</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-secondary">payment-01</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container font-medium text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> GCP
+                </span>
+</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-on-surface">10.0.1.20</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-secondary">8002</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
+</span>
+                  Healthy
+                </span>
+</td>
+<td class="py-3 px-3 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2 py-1 rounded bg-surface-container text-primary font-code-sm text-code-sm hover:bg-surface-container-high transition-colors" onclick="handleDnsQuery('payment.service.consul', '10.0.1.20:8002')" title="Query DNS via Express">Query DNS</button>
+<button class="px-2 py-1 rounded bg-surface-container text-secondary font-code-sm text-code-sm hover:text-on-surface transition-colors" onclick="handleInspect('payment-01')">Inspect</button>
+<button class="px-2 py-1 rounded bg-surface-container text-error font-code-sm text-code-sm hover:bg-error-container transition-colors" onclick="handleDeregister('payment-01')">Deregister</button>
+</div>
+</td>
+</tr>
+<tr class="service-row group hover:bg-surface-container-low/50 transition-colors" data-provider="azure">
+<td class="py-3 px-3">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-error"></span>
+<span class="font-label-lg text-label-lg font-semibold text-on-surface">Order Service</span>
+</div>
+</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-secondary">order-01</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container font-medium text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Azure
+                </span>
+</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-on-surface">10.0.1.30</td>
+<td class="py-3 px-3 font-code-sm text-code-sm text-secondary">8003</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container font-code-sm text-code-sm font-semibold">
+<span class="material-symbols-outlined text-[14px]">priority_high</span> Unhealthy
+                </span>
+</td>
+<td class="py-3 px-3 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2 py-1 rounded bg-error-container text-on-error-container font-code-sm text-code-sm hover:opacity-80 transition-colors" onclick="handleRetryCheck('order-01')">Retry Check</button>
+<button class="px-2 py-1 rounded bg-surface-container text-secondary font-code-sm text-code-sm hover:text-on-surface transition-colors" onclick="handleInspect('order-01')">Inspect</button>
+<button class="px-2 py-1 rounded bg-surface-container text-error font-code-sm text-code-sm hover:bg-error-container transition-colors" onclick="handleDeregister('order-01')">Deregister</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-space-md p-space-sm rounded-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-xs font-code-sm text-code-sm text-secondary">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">info</span>
+<span>Catalog TTL Sync interval: <strong>5000ms</strong></span>
+</div>
+<div>
+<span>Local Agent HTTP API: <strong>http://127.0.0.1:8500</strong></span>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">history</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Consul Gossip Stream</h2>
+</div>
+<span class="font-code-sm text-code-sm text-secondary">Serf WAN Log</span>
+</div>
+<div class="flex flex-col gap-space-md mt-space-sm relative">
+<div class="absolute left-3.5 top-2 bottom-2 w-0.5 bg-surface-container"></div>
+<div class="flex items-start gap-space-sm relative z-10">
+<div class="w-7 h-7 rounded-full bg-error-container text-on-error-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px]">priority_high</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm text-error font-semibold">[14:02:18] Consul Health Check</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mt-0.5 leading-snug">
+              Order Service (<span class="font-code-sm text-code-sm">order-01:8003/health</span>) HTTP 503 Service Unavailable
+            </p>
+<span class="font-code-sm text-code-sm text-secondary mt-1">Provider: Azure East US 2</span>
+</div>
+</div>
+<div class="flex items-start gap-space-sm relative z-10">
+<div class="w-7 h-7 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px]">radar</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm text-tertiary font-semibold">[13:58:40] Service Discovered</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mt-0.5 leading-snug">
+              Payment Service resolved by Node.js Express backend via Consul DNS (<span class="font-code-sm text-code-sm">gcp-catalog</span>)
+            </p>
+<span class="font-code-sm text-code-sm text-secondary mt-1">Resolution: 10.0.1.20:8002</span>
+</div>
+</div>
+<div class="flex items-start gap-space-sm relative z-10">
+<div class="w-7 h-7 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px]">add_task</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm text-primary font-semibold">[13:45:12] Service Registered</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mt-0.5 leading-snug">
+              User Service registered on AWS us-east-1 via Consul Catalog API
+            </p>
+<span class="font-code-sm text-code-sm text-secondary mt-1">Tags: [v1.0, primary, nodejs]</span>
+</div>
+</div>
+<div class="flex items-start gap-space-sm relative z-10">
+<div class="w-7 h-7 rounded-full bg-surface-container text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px]">public</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm text-secondary font-semibold">[12:30:00] WAN Federation</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mt-0.5 leading-snug">
+              Cross-cloud gossip mesh sync established between AWS, GCP, and Azure agents
+            </p>
+<span class="font-code-sm text-code-sm text-secondary mt-1">Latency: serfWAN 14.2ms avg</span>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-space-md">
+<a class="flex items-center justify-center gap-1 font-label-md text-label-md text-primary hover:underline" href="#">
+<span>View All Serf &amp; Mesh Telemetry Logs</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+<div class="rounded-xl bg-inverse-surface text-inverse-on-surface p-space-md shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-sm max-w-2xl">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high/20 flex items-center justify-center text-tertiary-fixed shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[22px]">developer_board</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-label-lg text-label-lg font-semibold text-inverse-on-surface">Express Backend Ready</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container font-code-sm text-code-sm">PORT: 5000</span>
+</div>
+<p class="font-body-sm text-body-sm text-inverse-on-surface/80 mt-1">
+          REST routes configured at <code class="font-code-sm text-code-sm text-inverse-primary bg-surface-container-high/10 px-1 py-0.5 rounded">/api/services</code>, <code class="font-code-sm text-code-sm text-inverse-primary bg-surface-container-high/10 px-1 py-0.5 rounded">/api/discover/:name</code>, <code class="font-code-sm text-code-sm text-inverse-primary bg-surface-container-high/10 px-1 py-0.5 rounded">/api/health</code>, and <code class="font-code-sm text-code-sm text-inverse-primary bg-surface-container-high/10 px-1 py-0.5 rounded">/api/register</code>. Ready for Consul Agent HTTP API (:8500).
+        </p>
+</div>
+</div>
+<div class="flex items-center gap-space-xs w-full md:w-auto bg-surface-container-high/10 p-2 rounded-lg justify-between shrink-0">
+<code class="font-code-sm text-code-sm text-inverse-primary truncate max-w-xs md:max-w-sm" id="curl-snippet">curl -X GET http://localhost:5000/api/services</code>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded bg-primary-container text-on-primary-container font-code-sm text-code-sm hover:bg-primary transition-colors" id="copy-btn" onclick="copySnippet()">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+<span>Copy</span>
+</button>
+</div>
+</div>
+<div class="fixed inset-0 bg-inverse-surface/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="register-modal">
+<div class="bg-surface-container-lowest rounded-xl max-w-lg w-full p-space-lg shadow-xl relative animate-in fade-in zoom-in-95 duration-150">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[24px]">add_circle</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Register New Cloud Service</h3>
+</div>
+<button class="p-1 rounded-lg hover:bg-surface-container text-secondary hover:text-on-surface" id="btn-register-close">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mb-space-md">This dispatches a payload to <code class="font-code-sm text-code-sm text-primary">POST /api/register</code> and registers the service with the local Consul agent catalog.</p>
+<form class="flex flex-col gap-space-sm" id="service-reg-form" onsubmit="handleRegisterSubmit(event)">
+<div>
+<label class="block font-label-md text-label-md text-on-surface font-medium mb-1">Service Name</label>
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" id="form-name" placeholder="e.g. auth-service" required="" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-space-sm">
+<div>
+<label class="block font-label-md text-label-md text-on-surface font-medium mb-1">Service ID</label>
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-sm text-code-sm focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" id="form-id" placeholder="e.g. auth-01" required="" type="text"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface font-medium mb-1">Cloud Provider</label>
+<select class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" id="form-provider">
+<option value="aws">Amazon Web Services (AWS)</option>
+<option value="gcp">Google Cloud Platform (GCP)</option>
+<option value="azure">Microsoft Azure</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-sm">
+<div>
+<label class="block font-label-md text-label-md text-on-surface font-medium mb-1">IP Address</label>
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-sm text-code-sm focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" id="form-ip" placeholder="10.0.1.40" required="" type="text"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface font-medium mb-1">Port</label>
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-sm text-code-sm focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" id="form-port" placeholder="8004" required="" type="number"/>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface font-medium mb-1">Health Check Endpoint</label>
+<input class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-sm text-code-sm focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" placeholder="/health" type="text" value="/health"/>
+</div>
+<div class="flex items-center justify-end gap-space-sm mt-space-md pt-space-xs">
+<button class="px-space-md py-2 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container font-label-lg text-label-lg font-medium transition-colors" id="btn-register-cancel" type="button">Cancel</button>
+<button class="px-space-md py-2 rounded-lg bg-primary-container text-on-primary-container hover:bg-primary font-label-lg text-label-lg font-medium transition-colors shadow-sm" type="submit">Register Service</button>
+</div>
+</form>
+</div>
+</div>
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg font-label-md text-label-md" id="toast"></div>
+</div>
+<script>
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.className = `fixed bottom-6 right-6 z-50 transform transition-all duration-300 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg font-label-md text-label-md ${
+      type === 'error' ? 'bg-error text-on-error' : 'bg-inverse-surface text-inverse-on-surface'
+    }`;
+    toast.style.transform = 'translateY(0)';
+    toast.style.opacity = '1';
+    setTimeout(() => {
+      toast.style.transform = 'translateY(6rem)';
+      toast.style.opacity = '0';
+    }, 3200);
+  }
+
+  const syncBtn = document.getElementById('btn-sync-mesh');
+  const syncIcon = document.getElementById('sync-icon');
+  if (syncBtn && syncIcon) {
+    syncBtn.addEventListener('click', () => {
+      syncIcon.classList.add('rotate-180');
+      showToast('Consul WAN Mesh synchronized across AWS, GCP, and Azure');
+      setTimeout(() => {
+        syncIcon.classList.remove('rotate-180');
+      }, 700);
+    });
+  }
+
+  const regModal = document.getElementById('register-modal');
+  const openRegBtn = document.getElementById('btn-register-open');
+  const closeRegBtn = document.getElementById('btn-register-close');
+  const cancelRegBtn = document.getElementById('btn-register-cancel');
+
+  function toggleModal(open) {
+    if (!regModal) return;
+    if (open) {
+      regModal.classList.remove('hidden');
+    } else {
+      regModal.classList.add('hidden');
+    }
+  }
+
+  if (openRegBtn) openRegBtn.addEventListener('click', () => toggleModal(true));
+  if (closeRegBtn) closeRegBtn.addEventListener('click', () => toggleModal(false));
+  if (cancelRegBtn) cancelRegBtn.addEventListener('click', () => toggleModal(false));
+
+  const filterTabs = document.querySelectorAll('.filter-tab');
+  const serviceRows = document.querySelectorAll('.service-row');
+
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      filterTabs.forEach(t => {
+        t.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+        t.classList.add('text-secondary');
+      });
+      tab.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+      tab.classList.remove('text-secondary');
+
+      const filter = tab.getAttribute('data-filter');
+      serviceRows.forEach(row => {
+        if (filter === 'all' || row.getAttribute('data-provider') === filter) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  });
+
+  function handleDnsQuery(fqdn, target) {
+    showToast(`Consul DNS: Resolved ${fqdn} -> ${target} via Express API`);
+  }
+
+  function handleInspect(serviceId) {
+    showToast(`Inspecting consul catalog entity for service ID: ${serviceId}`);
+  }
+
+  function handleDeregister(serviceId) {
+    if (confirm(`Deregister service "${serviceId}" from the multi-cloud Consul cluster?`)) {
+      showToast(`Service "${serviceId}" deregistered successfully. Catalog updated.`, 'error');
+    }
+  }
+
+  function handleRetryCheck(serviceId) {
+    showToast(`Invoking Consul health probe for ${serviceId}... (Checking /health)`);
+    setTimeout(() => {
+      showToast(`Health check failed: ${serviceId} returned HTTP 503`, 'error');
+    }, 1200);
+  }
+
+  function copySnippet() {
+    const text = document.getElementById('curl-snippet').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('cURL command copied to clipboard!');
+    }).catch(() => {
+      showToast('Copied curl command to clipboard');
+    });
+  }
+
+  function handleRegisterSubmit(e) {
+    e.preventDefault();
+    const name = document.getElementById('form-name').value;
+    const id = document.getElementById('form-id').value;
+    const provider = document.getElementById('form-provider').value;
+    const ip = document.getElementById('form-ip').value;
+    const port = document.getElementById('form-port').value;
+
+    toggleModal(false);
+    showToast(`Service "${name}" (${id}) registered to ${provider.toUpperCase()} mesh!`);
+    e.target.reset();
+  }
+  
+</script></main></div></body></html>
