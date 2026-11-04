@@ -1,10 +1,15 @@
 {
   "name": "cross-cloud-service-discovery",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Cross-Cloud Service Discovery Registry simulation using HashiCorp Consul and Express",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "payment": "node payment-service.js",
+    "start:all": "node start-all.js",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "test": "node --test test/*.test.js"
   },
   "repository": {
     "type": "git",

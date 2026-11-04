@@ -44,6 +44,7 @@
     }
   </style>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="api-config.js"></script>
   <script
     id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "secondary-fixed-dim": "#bec6e0", "on-secondary": "#ffffff", "inverse-primary": "#b4c5ff", "surface-container-high": "#dce9ff", "surface-container": "#e5eeff", "primary-container": "#2563eb", "on-secondary-fixed-variant": "#3f465c", "secondary-container": "#dae2fd", "outline": "#737686", "primary": "#004ac6", "inverse-surface": "#213145", "on-tertiary": "#ffffff", "on-error-container": "#93000a", "surface-container-highest": "#d3e4fe", "inverse-on-surface": "#eaf1ff", "on-primary-fixed-variant": "#003ea8", "tertiary-fixed": "#6ffbbe", "on-tertiary-fixed-variant": "#005236", "on-surface": "#0b1c30", "on-secondary-container": "#5c647a", "on-primary": "#ffffff", "surface": "#f8f9ff", "background": "#f8f9ff", "error": "#ba1a1a", "on-secondary-fixed": "#131b2e", "on-background": "#0b1c30", "on-tertiary-fixed": "#002113", "tertiary-fixed-dim": "#4edea3", "primary-fixed-dim": "#b4c5ff", "surface-container-low": "#eff4ff", "on-primary-container": "#eeefff", "outline-variant": "#c3c6d7", "tertiary": "#006242", "surface-dim": "#cbdbf5", "tertiary-container": "#007d55", "secondary": "#565e74", "surface-bright": "#f8f9ff", "on-error": "#ffffff", "primary-fixed": "#dbe1ff", "on-surface-variant": "#434655", "on-tertiary-container": "#bdffdb", "on-primary-fixed": "#00174b", "surface-container-lowest": "#ffffff", "surface-tint": "#0053db", "error-container": "#ffdad6", "surface-variant": "#d3e4fe", "secondary-fixed": "#dae2fd" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "margin-lg": "2rem", "space-md": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "gutter": "1rem", "gutter-lg": "1.5rem", "space-xl": "2rem" }, fontFamily: { "body-sm": ["Inter"], "label-md": ["Inter"], "headline-md": ["Inter"], "headline-xl": ["Inter"], "label-lg": ["Inter"], "code-sm": ["JetBrains Mono"], "body-md": ["Inter"], "headline-lg": ["Inter"], "code-md": ["JetBrains Mono"], "body-lg": ["Inter"] }, fontSize: { "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }], "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }], "headline-md": ["18px", { lineHeight: "24px", fontWeight: "600" }], "headline-xl": ["32px", { lineHeight: "40px", fontWeight: "700" }], "label-lg": ["14px", { lineHeight: "20px", fontWeight: "500" }], "code-sm": ["11px", { lineHeight: "14px", fontWeight: "400" }], "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }], "headline-lg": ["24px", { lineHeight: "32px", fontWeight: "600" }], "code-md": ["13px", { lineHeight: "18px", fontWeight: "500" }], "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }] } } } };</script>
 </head>
@@ -77,7 +78,13 @@
             class="material-symbols-outlined text-[20px]">monitor_heart</span><span>Health Monitoring</span></a><a
           class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg"
           data-path="settings" href="settings.html"><span
-            class="material-symbols-outlined text-[20px]">settings</span><span>Settings</span></a></nav>
+            class="material-symbols-outlined text-[20px]">settings</span><span>Settings</span></a>
+<div class="px-space-sm pt-3 pb-1 text-[10px] font-code-sm uppercase tracking-wider text-inverse-on-surface/50 font-bold">SSD Virtual Lab</div>
+<a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="lab-architecture" href="lab-architecture.html"><span class="material-symbols-outlined text-[20px]">account_tree</span><span>Architecture</span></a>
+<a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="lab-simulator" href="lab-simulator.html"><span class="material-symbols-outlined text-[20px]">science</span><span>Live Simulator</span></a>
+<a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="lab-scenarios" href="lab-scenarios.html"><span class="material-symbols-outlined text-[20px]">dynamic_form</span><span>Scenarios</span></a>
+<a class="flex items-center gap-space-sm px-space-sm py-space-xs text-inverse-on-surface/80 hover:bg-surface-container-high/10 hover:text-inverse-on-surface rounded-lg transition-colors font-label-lg text-label-lg" data-path="lab-learning" href="lab-learning.html"><span class="material-symbols-outlined text-[20px]">assignment</span><span>Learning &amp; Reports</span></a>
+</nav>
     </div>
     <div class="p-space-sm m-space-sm rounded-lg bg-surface-container-high/10 flex flex-col gap-space-xs">
       <div class="flex items-center justify-between">
@@ -106,10 +113,10 @@
       </div>
       <div class="flex items-center gap-space-md">
         <div
-          class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface-variant">
+          class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface-variant express-api-pill">
           <span class="material-symbols-outlined text-[16px]">terminal</span><span
-            class="font-code-sm text-code-sm">Express API: http://localhost:5000</span><span
-            class="inline-block w-2 h-2 rounded-full bg-tertiary-container"></span>
+            class="font-code-sm text-code-sm api-status-text">Express API: http://localhost:3000</span><span
+            class="inline-block w-2 h-2 rounded-full bg-tertiary-container api-status-dot"></span>
         </div><button
           class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface text-on-surface-variant hover:text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors"><span
             class="material-symbols-outlined text-[18px]">search</span><span
@@ -151,7 +158,7 @@
                 class="bg-surface-container-lowest px-space-md py-space-sm rounded-xl shadow-sm flex items-center gap-space-md">
                 <div class="flex flex-col">
                   <span class="font-code-sm text-code-sm text-secondary uppercase">Mesh Services</span>
-                  <span class="font-headline-md text-headline-md text-on-surface font-bold">5 Nodes</span>
+                  <span class="font-headline-md text-headline-md text-on-surface font-bold" id="topMeshNodesCount">5 Nodes</span>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary">
                   <span class="material-symbols-outlined text-[20px]">layers</span>
@@ -161,7 +168,7 @@
                 class="bg-surface-container-lowest px-space-md py-space-sm rounded-xl shadow-sm flex items-center gap-space-md">
                 <div class="flex flex-col">
                   <span class="font-code-sm text-code-sm text-secondary uppercase">Global Health</span>
-                  <span class="font-headline-md text-headline-md text-tertiary font-bold">80% Pass</span>
+                  <span class="font-headline-md text-headline-md text-tertiary font-bold" id="topGlobalHealth">80% Pass</span>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-tertiary">
                   <span class="material-symbols-outlined text-[20px]">verified</span>
@@ -189,7 +196,7 @@
                     Catalog</span>
                   <span class="font-code-sm text-code-sm text-on-surface-variant flex items-center gap-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
-                    Backend Ready: POST to <code class="text-primary font-medium">/api/register</code> → Consul Agent
+                    Backend Ready: POST to <code class="text-primary font-medium">http://localhost:3000/api/services/register</code> → Consul Agent
                     <code class="text-secondary font-medium">/v1/agent/service/register</code>
                   </span>
                 </div>
@@ -397,9 +404,22 @@
                     <option value="AWS">AWS (Amazon Web Services)</option>
                     <option value="GCP">GCP (Google Cloud)</option>
                     <option value="Azure">Azure (Microsoft)</option>
+                    <option value="Local">Local (Simulated)</option>
                   </select>
                   <span
                     class="material-symbols-outlined text-secondary absolute right-2.5 top-2 pointer-events-none text-[16px]">expand_more</span>
+                </div>
+                <!-- Data Source Filter -->
+                <div class="relative">
+                  <select
+                    class="pl-3 pr-8 py-1.5 bg-surface-container-lowest rounded-lg font-label-md text-label-md text-on-surface appearance-none focus:outline-none focus:shadow-[0_0_0_2px_rgba(0,74,198,0.25)] transition-all"
+                    id="filterSource" onchange="filterRegistry()">
+                    <option value="ALL">Source: All Records</option>
+                    <option value="LIVE">Live Consul Services Only</option>
+                    <option value="SAMPLE">Demo / Sample Data Only</option>
+                  </select>
+                  <span
+                    class="material-symbols-outlined text-secondary absolute right-2.5 top-2 pointer-events-none text-[16px]">tune</span>
                 </div>
                 <!-- Health Status Filter -->
                 <div class="relative">
@@ -458,361 +478,7 @@
                     <th class="py-3 px-space-md text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y-0" id="servicesTbody">
-                  <!-- Row 1: User Service -->
-                  <tr class="hover:bg-surface-container-low/60 transition-colors group" data-ip="10.0.1.10"
-                    data-name="User Service" data-port="8001" data-provider="AWS" data-status="Healthy">
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-space-sm">
-                        <div
-                          class="w-7 h-7 rounded-md bg-secondary-container text-primary flex items-center justify-center font-code-sm text-code-sm">
-                          <span class="material-symbols-outlined text-[16px]">account_tree</span>
-                        </div>
-                        <div class="flex flex-col">
-                          <span class="font-label-lg text-label-lg font-medium text-on-surface">User Service</span>
-                          <span class="font-code-sm text-code-sm text-secondary">v2.4.1 • rest-core</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="font-code-sm text-code-sm bg-surface-container px-2 py-0.5 rounded text-on-surface">user-01</span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold bg-surface-container-high text-on-surface">
-                        <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                        AWS • us-east-1
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md font-code-md text-code-md text-on-surface">10.0.1.10</td>
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-1 font-code-md text-code-md text-on-surface">
-                        <span class="font-bold">8001</span>
-                        <span class="text-secondary text-[11px]">/ TCP</span>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-tertiary font-medium"
-                        title="Consul HTTP Probe 200 OK - 8ms">
-                        <span class="relative flex h-2 w-2">
-                          <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed-dim opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
-                        </span>
-                        Healthy (Passing)
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <a class="font-code-sm text-code-sm text-primary hover:underline flex items-center gap-1"
-                        href="http://10.0.1.10:8001/health" target="_blank">
-                        <span>http://10.0.1.10:8001/health</span>
-                        <span class="material-symbols-outlined text-[13px]">open_in_new</span>
-                      </a>
-                    </td>
-                    <td class="py-3 px-space-md text-right">
-                      <div class="flex items-center justify-end gap-space-xs">
-                        <button
-                          class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors"
-                          onclick="inspectService('user-01')" title="Inspect Node Details">
-                          <span class="material-symbols-outlined text-[18px]">manage_search</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors"
-                          onclick="testDns('user-service.service.consul')" title="Test DNS Query">
-                          <span class="material-symbols-outlined text-[18px]">travel_explore</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-error-container text-on-surface-variant hover:text-error transition-colors"
-                          onclick="deregisterService(this, 'user-01')" title="Deregister from Catalog">
-                          <span class="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  <!-- Row 2: Payment Service -->
-                  <tr class="hover:bg-surface-container-low/60 transition-colors group" data-ip="10.0.1.20"
-                    data-name="Payment Service" data-port="8002" data-provider="GCP" data-status="Healthy">
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-space-sm">
-                        <div
-                          class="w-7 h-7 rounded-md bg-secondary-container text-primary flex items-center justify-center font-code-sm text-code-sm">
-                          <span class="material-symbols-outlined text-[16px]">payments</span>
-                        </div>
-                        <div class="flex flex-col">
-                          <span class="font-label-lg text-label-lg font-medium text-on-surface">Payment Service</span>
-                          <span class="font-code-sm text-code-sm text-secondary">v1.9.0 • pci-isolated</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="font-code-sm text-code-sm bg-surface-container px-2 py-0.5 rounded text-on-surface">payment-01</span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold bg-surface-container-high text-on-surface">
-                        <span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
-                        GCP • us-central1
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md font-code-md text-code-md text-on-surface">10.0.1.20</td>
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-1 font-code-md text-code-md text-on-surface">
-                        <span class="font-bold">8002</span>
-                        <span class="text-secondary text-[11px]">/ HTTP</span>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-tertiary font-medium"
-                        title="Consul HTTP Probe 200 OK - 12ms">
-                        <span class="relative flex h-2 w-2">
-                          <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed-dim opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
-                        </span>
-                        Healthy (Passing)
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <a class="font-code-sm text-code-sm text-primary hover:underline flex items-center gap-1"
-                        href="http://10.0.1.20:8002/healthz" target="_blank">
-                        <span>http://10.0.1.20:8002/healthz</span>
-                        <span class="material-symbols-outlined text-[13px]">open_in_new</span>
-                      </a>
-                    </td>
-                    <td class="py-3 px-space-md text-right">
-                      <div class="flex items-center justify-end gap-space-xs">
-                        <button
-                          class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors"
-                          onclick="inspectService('payment-01')" title="Inspect Node Details">
-                          <span class="material-symbols-outlined text-[18px]">manage_search</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors"
-                          onclick="testDns('payment-service.service.consul')" title="Test DNS Query">
-                          <span class="material-symbols-outlined text-[18px]">travel_explore</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-error-container text-on-surface-variant hover:text-error transition-colors"
-                          onclick="deregisterService(this, 'payment-01')" title="Deregister from Catalog">
-                          <span class="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  <!-- Row 3: Order Service (Unhealthy) -->
-                  <tr class="hover:bg-surface-container-low/60 transition-colors group bg-error-container/20"
-                    data-ip="10.0.1.30" data-name="Order Service" data-port="8003" data-provider="Azure"
-                    data-status="Unhealthy">
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-space-sm">
-                        <div
-                          class="w-7 h-7 rounded-md bg-error-container text-error flex items-center justify-center font-code-sm text-code-sm">
-                          <span class="material-symbols-outlined text-[16px]">shopping_cart</span>
-                        </div>
-                        <div class="flex flex-col">
-                          <span class="font-label-lg text-label-lg font-medium text-on-surface">Order Service</span>
-                          <span class="font-code-sm text-code-sm text-error">v3.0.0-rc2 • order-pipeline</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="font-code-sm text-code-sm bg-surface-container px-2 py-0.5 rounded text-on-surface">order-01</span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold bg-surface-container-high text-on-surface">
-                        <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                        Azure • East US 2
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md font-code-md text-code-md text-on-surface">10.0.1.30</td>
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-1 font-code-md text-code-md text-on-surface">
-                        <span class="font-bold">8003</span>
-                        <span class="text-secondary text-[11px]">/ HTTP</span>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-error-container text-error font-medium"
-                        title="Critical: Service responded with HTTP 503 Service Unavailable">
-                        <span class="w-2 h-2 rounded-full bg-error"></span>
-                        Unhealthy (Failed: 503)
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <a class="font-code-sm text-code-sm text-error hover:underline flex items-center gap-1"
-                        href="http://10.0.1.30:8003/health" target="_blank">
-                        <span>http://10.0.1.30:8003/health</span>
-                        <span class="material-symbols-outlined text-[13px]">warning</span>
-                      </a>
-                    </td>
-                    <td class="py-3 px-space-md text-right">
-                      <div class="flex items-center justify-end gap-space-xs">
-                        <button
-                          class="px-2 py-1 rounded bg-error-container text-error hover:bg-error hover:text-on-error font-label-md text-label-md transition-colors flex items-center gap-1"
-                          onclick="retryCheck('order-01', this)">
-                          <span class="material-symbols-outlined text-[15px]">restart_alt</span>
-                          <span>Retry Check</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-error-container text-on-surface-variant hover:text-error transition-colors"
-                          onclick="deregisterService(this, 'order-01')" title="Deregister from Catalog">
-                          <span class="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  <!-- Row 4: Auth Service -->
-                  <tr class="hover:bg-surface-container-low/60 transition-colors group" data-ip="10.0.1.15"
-                    data-name="Auth Service" data-port="8000" data-provider="AWS" data-status="Healthy">
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-space-sm">
-                        <div
-                          class="w-7 h-7 rounded-md bg-secondary-container text-primary flex items-center justify-center font-code-sm text-code-sm">
-                          <span class="material-symbols-outlined text-[16px]">shield_person</span>
-                        </div>
-                        <div class="flex flex-col">
-                          <span class="font-label-lg text-label-lg font-medium text-on-surface">Auth Service</span>
-                          <span class="font-code-sm text-code-sm text-secondary">v4.1.0 • oauth2-oidc</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="font-code-sm text-code-sm bg-surface-container px-2 py-0.5 rounded text-on-surface">auth-01</span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold bg-surface-container-high text-on-surface">
-                        <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                        AWS • us-east-1
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md font-code-md text-code-md text-on-surface">10.0.1.15</td>
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-1 font-code-md text-code-md text-on-surface">
-                        <span class="font-bold">8000</span>
-                        <span class="text-secondary text-[11px]">/ HTTP</span>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-tertiary font-medium"
-                        title="Consul HTTP Probe 200 OK - 4ms">
-                        <span class="relative flex h-2 w-2">
-                          <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed-dim opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
-                        </span>
-                        Healthy (Passing)
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <a class="font-code-sm text-code-sm text-primary hover:underline flex items-center gap-1"
-                        href="http://10.0.1.15:8000/api/status" target="_blank">
-                        <span>http://10.0.1.15:8000/api/status</span>
-                        <span class="material-symbols-outlined text-[13px]">open_in_new</span>
-                      </a>
-                    </td>
-                    <td class="py-3 px-space-md text-right">
-                      <div class="flex items-center justify-end gap-space-xs">
-                        <button
-                          class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors"
-                          onclick="inspectService('auth-01')" title="Inspect Node Details">
-                          <span class="material-symbols-outlined text-[18px]">manage_search</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors"
-                          onclick="testDns('auth-service.service.consul')" title="Test DNS Query">
-                          <span class="material-symbols-outlined text-[18px]">travel_explore</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-error-container text-on-surface-variant hover:text-error transition-colors"
-                          onclick="deregisterService(this, 'auth-01')" title="Deregister from Catalog">
-                          <span class="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  <!-- Row 5: Inventory Service -->
-                  <tr class="hover:bg-surface-container-low/60 transition-colors group" data-ip="10.0.1.25"
-                    data-name="Inventory Service" data-port="8005" data-provider="GCP" data-status="Healthy">
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-space-sm">
-                        <div
-                          class="w-7 h-7 rounded-md bg-secondary-container text-primary flex items-center justify-center font-code-sm text-code-sm">
-                          <span class="material-symbols-outlined text-[16px]">inventory_2</span>
-                        </div>
-                        <div class="flex flex-col">
-                          <span class="font-label-lg text-label-lg font-medium text-on-surface">Inventory Service</span>
-                          <span class="font-code-sm text-code-sm text-secondary">v1.1.4 • warehouse-sync</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="font-code-sm text-code-sm bg-surface-container px-2 py-0.5 rounded text-on-surface">inventory-01</span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold bg-surface-container-high text-on-surface">
-                        <span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
-                        GCP • us-central1
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md font-code-md text-code-md text-on-surface">10.0.1.25</td>
-                    <td class="py-3 px-space-md">
-                      <div class="flex items-center gap-1 font-code-md text-code-md text-on-surface">
-                        <span class="font-bold">8005</span>
-                        <span class="text-secondary text-[11px]">/ HTTP</span>
-                      </div>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <span
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-tertiary font-medium"
-                        title="Consul HTTP Probe 200 OK - 9ms">
-                        <span class="relative flex h-2 w-2">
-                          <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed-dim opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
-                        </span>
-                        Healthy (Passing)
-                      </span>
-                    </td>
-                    <td class="py-3 px-space-md">
-                      <a class="font-code-sm text-code-sm text-primary hover:underline flex items-center gap-1"
-                        href="http://10.0.1.25:8005/health" target="_blank">
-                        <span>http://10.0.1.25:8005/health</span>
-                        <span class="material-symbols-outlined text-[13px]">open_in_new</span>
-                      </a>
-                    </td>
-                    <td class="py-3 px-space-md text-right">
-                      <div class="flex items-center justify-end gap-space-xs">
-                        <button
-                          class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors"
-                          onclick="inspectService('inventory-01')" title="Inspect Node Details">
-                          <span class="material-symbols-outlined text-[18px]">manage_search</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors"
-                          onclick="testDns('inventory-service.service.consul')" title="Test DNS Query">
-                          <span class="material-symbols-outlined text-[18px]">travel_explore</span>
-                        </button>
-                        <button
-                          class="p-1.5 rounded-md hover:bg-error-container text-on-surface-variant hover:text-error transition-colors"
-                          onclick="deregisterService(this, 'inventory-01')" title="Deregister from Catalog">
-                          <span class="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
+                <tbody class="divide-y-0" id="servicesTbody"></tbody>
               </table>
             </div>
             <!-- Table Footer / Metadata Bar -->
@@ -962,373 +628,11 @@ router.<span class="text-tertiary-fixed">post</span>(<span class="text-tertiary-
           </section>
         </div>
       </div>
-      <script>
-        async function handleServiceRegistration(event) {
+      <script src="service-registry.js"></script>
 
-          event.preventDefault();
-
-          const name = document.getElementById('svcName').value.trim();
-          const id = document.getElementById('svcId').value.trim();
-          const provider = document.getElementById('svcProvider').value;
-          const ip = document.getElementById('svcIp').value.trim();
-          const port = document.getElementById('svcPort').value.trim();
-          const checkPath = document.getElementById('svcHealth').value.trim();
-          const tags = document.getElementById('svcTags').value.trim();
-          const intervalValue = document.getElementById('svcInterval').value;
-          const [interval, timeout] = intervalValue.split("/");
-
-          try {
-            const response = await fetch(
-              "http://localhost:3000/api/services/register",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  name: name.toLowerCase().replace(/\s+/g, "-"),
-                  id: id,
-                  provider: provider,
-                  address: ip,
-                  port: Number(port),
-                  checkPath: checkPath.startsWith("/")
-                    ? checkPath
-                    : "/" + checkPath,
-                  interval: interval,
-                  timeout: timeout,
-                  tags: tags
-                    .split(",")
-                    .map(tag => tag.trim())
-                    .filter(Boolean)
-                })
-              }
-            );
-
-            const result = await response.json();
-
-            if (!response.ok || result.status !== "success") {
-              throw new Error(result.message || "Registration failed");
-            }
-          } catch (error) {
-            const feedback = document.getElementById("registrationFeedback");
-            const msg = document.getElementById("feedbackMsg");
-
-            feedback.className =
-              "rounded-lg p-space-sm flex items-center justify-between bg-error-container text-error";
-            msg.textContent = "Registration failed: " + error.message;
-            feedback.classList.remove("hidden");
-            return;
-          }
-
-          const tbody = document.getElementById('servicesTbody');
-          const newRow = document.createElement('tr');
-          newRow.className = 'hover:bg-surface-container-low/60 transition-colors group';
-          newRow.dataset.provider = provider;
-          newRow.dataset.status = 'Healthy';
-          newRow.dataset.port = port;
-          newRow.dataset.ip = ip;
-          newRow.dataset.name = name;
-
-          const providerRegion = provider === 'AWS' ? 'AWS • us-east-1' : (provider === 'GCP' ? 'GCP • us-central1' : (provider === 'Azure' ? 'Azure • East US 2' : 'Hybrid • onprem'));
-          const badgeBg = 'bg-surface-container-high';
-          const dotColor = provider === 'AWS' ? 'bg-primary' : (provider === 'GCP' ? 'bg-tertiary' : 'bg-primary');
-
-          newRow.innerHTML = `
-      <td class="py-3 px-space-md">
-        <div class="flex items-center gap-space-sm">
-          <div class="w-7 h-7 rounded-md bg-secondary-container text-primary flex items-center justify-center font-code-sm text-code-sm">
-            <span class="material-symbols-outlined text-[16px]">notifications_active</span>
-          </div>
-          <div class="flex flex-col">
-            <span class="font-label-lg text-label-lg font-medium text-on-surface">${escapeHtml(name)}</span>
-            <span class="font-code-sm text-code-sm text-secondary">${escapeHtml(tags)}</span>
-          </div>
-        </div>
-      </td>
-      <td class="py-3 px-space-md">
-        <span class="font-code-sm text-code-sm bg-surface-container px-2 py-0.5 rounded text-on-surface">${escapeHtml(id)}</span>
-      </td>
-      <td class="py-3 px-space-md">
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold ${badgeBg} text-on-surface">
-          <span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span>
-          ${providerRegion}
-        </span>
-      </td>
-      <td class="py-3 px-space-md font-code-md text-code-md text-on-surface">${escapeHtml(ip)}</td>
-      <td class="py-3 px-space-md">
-        <div class="flex items-center gap-1 font-code-md text-code-md text-on-surface">
-          <span class="font-bold">${escapeHtml(port)}</span>
-          <span class="text-secondary text-[11px]">/ HTTP</span>
-        </div>
-      </td>
-      <td class="py-3 px-space-md">
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-tertiary font-medium" title="Passing Consul probe">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed-dim opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
-          </span>
-          Healthy (Passing)
-        </span>
-      </td>
-      <td class="py-3 px-space-md">
-        <a href="http://${escapeHtml(ip)}:${escapeHtml(port)}${escapeHtml(checkPath)}" target="_blank" class="font-code-sm text-code-sm text-primary hover:underline flex items-center gap-1">
-          <span>http://${escapeHtml(ip)}:${escapeHtml(port)}${escapeHtml(checkPath)}</span>
-          <span class="material-symbols-outlined text-[13px]">open_in_new</span>
-        </a>
-      </td>
-      <td class="py-3 px-space-md text-right">
-        <div class="flex items-center justify-end gap-space-xs">
-          <button onclick="inspectService('${escapeHtml(id)}')" class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors" title="Inspect Node Details">
-            <span class="material-symbols-outlined text-[18px]">manage_search</span>
-          </button>
-          <button onclick="testDns('${escapeHtml(name.toLowerCase().replace(/\\s+/g, '-'))}.service.consul')" class="p-1.5 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors" title="Test DNS Query">
-            <span class="material-symbols-outlined text-[18px]">travel_explore</span>
-          </button>
-          <button onclick="deregisterService(this, '${escapeHtml(id)}')" class="p-1.5 rounded-md hover:bg-error-container text-on-surface-variant hover:text-error transition-colors" title="Deregister from Catalog">
-            <span class="material-symbols-outlined text-[18px]">delete</span>
-          </button>
-        </div>
-      </td>
-    `;
-
-          tbody.prepend(newRow);
-
-          const feedback = document.getElementById('registrationFeedback');
-          const msg = document.getElementById('feedbackMsg');
-          feedback.className = 'rounded-lg p-space-sm flex items-center justify-between bg-surface-container text-tertiary';
-          msg.innerHTML = `<span class="material-symbols-outlined text-[18px]">check_circle</span><span>Service <strong>${escapeHtml(id)}</strong> registered to Consul catalog successfully.</span>`;
-          feedback.classList.remove('hidden');
-
-          filterRegistry();
-        }
-
-        function testProbe() {
-          const ip = document.getElementById('svcIp').value;
-          const port = document.getElementById('svcPort').value;
-          const path = document.getElementById('svcHealth').value;
-
-          const feedback = document.getElementById('registrationFeedback');
-          const msg = document.getElementById('feedbackMsg');
-          feedback.className = 'rounded-lg p-space-sm flex items-center justify-between bg-surface-container-high text-primary';
-          msg.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin">sync</span><span>Probing http://${ip}:${port}${path}... 200 OK (RTT: 4.8ms)</span>`;
-          feedback.classList.remove('hidden');
-        }
-
-        function deregisterService(btn, id) {
-          if (confirm(`Confirm deregistration of service instance "${id}" from Consul Catalog?`)) {
-            const row = btn.closest('tr');
-            row.remove();
-            filterRegistry();
-          }
-        }
-
-        function retryCheck(id, btn) {
-          btn.innerHTML = `<span class="material-symbols-outlined text-[15px] animate-spin">sync</span><span>Checking...</span>`;
-          setTimeout(() => {
-            btn.innerHTML = `<span class="material-symbols-outlined text-[15px]">check</span><span>Restored</span>`;
-            btn.className = "px-2 py-1 rounded bg-surface-container text-tertiary font-label-md text-label-md flex items-center gap-1";
-            const row = btn.closest('tr');
-            row.className = 'hover:bg-surface-container-low/60 transition-colors group';
-            row.dataset.status = 'Healthy';
-            const statusCell = row.cells[5];
-            statusCell.innerHTML = `
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-tertiary font-medium">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed-dim opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
-          </span>
-          Healthy (Passing)
-        </span>
-      `;
-            filterRegistry();
-          }, 1200);
-        }
-
-        function inspectService(id) {
-          document.getElementById('inspectId').textContent = id;
-          document.getElementById('inspectDrawer').classList.remove('hidden');
-        }
-
-        function testDns(domain) {
-          alert(`[Consul DNS Resolver Probe]\nQuery: ${domain}\nResult: 10.0.1.x TTL=0s NOERROR\nAuthority: consul-core-01:8600`);
-        }
-
-        function filterRegistry() {
-          const searchVal = document.getElementById('tableSearch').value.toLowerCase();
-          const providerVal = document.getElementById('filterProvider').value;
-          const statusVal = document.getElementById('filterStatus').value;
-
-          const rows = document.querySelectorAll('#servicesTbody tr');
-          let visibleCount = 0;
-
-          rows.forEach(row => {
-            const p = row.dataset.provider;
-            const s = row.dataset.status;
-            const text = row.innerText.toLowerCase();
-
-            const matchesSearch = text.includes(searchVal);
-            const matchesProvider = (providerVal === 'ALL' || p === providerVal);
-            const matchesStatus = (statusVal === 'ALL' || s === statusVal);
-
-            if (matchesSearch && matchesProvider && matchesStatus) {
-              row.style.display = '';
-              visibleCount++;
-            } else {
-              row.style.display = 'none';
-            }
-          });
-
-          document.getElementById('visibleRowCount').textContent = visibleCount;
-          document.getElementById('totalRowCount').textContent = rows.length;
-        }
-
-        function sortRegistry() {
-          const criteria = document.getElementById('filterSort').value;
-          const tbody = document.getElementById('servicesTbody');
-          const rows = Array.from(tbody.querySelectorAll('tr'));
-
-          if (criteria === 'port-asc') {
-            rows.sort((a, b) => Number(a.dataset.port) - Number(b.dataset.port));
-          } else if (criteria === 'ip-asc') {
-            rows.sort((a, b) => a.dataset.ip.localeCompare(b.dataset.ip));
-          } else if (criteria === 'name-asc') {
-            rows.sort((a, b) => a.dataset.name.localeCompare(b.dataset.name));
-          }
-
-          rows.forEach(r => tbody.appendChild(r));
-        }
-
-        function exportConsulJSON() {
-          const rows = Array.from(document.querySelectorAll('#servicesTbody tr')).filter(r => r.style.display !== 'none');
-          const data = rows.map(r => ({
-            service: r.dataset.name,
-            id: r.cells[1].innerText.trim(),
-            provider: r.dataset.provider,
-            address: r.dataset.ip,
-            port: Number(r.dataset.port),
-            status: r.dataset.status
-          }));
-
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'consul-catalog-export.json';
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-
-        function triggerBulkSync(btn) {
-          const orig = btn.innerHTML;
-          btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin text-tertiary">sync</span><span>Syncing...</span>`;
-          setTimeout(() => {
-            btn.innerHTML = `<span class="material-symbols-outlined text-[16px] text-tertiary">done</span><span>Catalog Synced</span>`;
-            setTimeout(() => btn.innerHTML = orig, 1800);
-          }, 1000);
-        }
-
-        function copySnippet() {
-          const code = document.getElementById('codeSnippet').innerText;
-          navigator.clipboard.writeText(code).then(() => {
-            const btnText = document.getElementById('copyBtnText');
-            btnText.textContent = 'Copied to Clipboard!';
-            setTimeout(() => btnText.textContent = 'Copy Endpoint', 2000);
-          });
-        }
-
-        function escapeHtml(string) {
-          return String(string).replace(/[&<>"'`=\/]/g, function (s) {
-            return {
-              '&': '&amp;',
-              '<': '&lt;',
-              '>': '&gt;',
-              '"': '&quot;',
-              "'": '&#39;',
-              '/': '&#x2F;',
-              '`': '&#x60;',
-              '=': '&#x3D;'
-            }[s];
-          });
-        }
-      </script>
     </main>
   </div>
-  <script>
-    // Load real services from the local Express API and display them in the table.
-    const BACKEND_URL = "http://localhost:3000";
 
-    async function loadServicesFromBackend() {
-      const tbody = document.getElementById("servicesTbody");
-      if (!tbody) return;
-
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/services`);
-        if (!response.ok) throw new Error(`Backend returned HTTP ${response.status}`);
-        const data = await response.json();
-        const services = data.services || {};
-        console.log("Registered services:", services);
-
-        // Remove the previous live rows so refreshes don't create duplicates.
-        tbody.querySelectorAll("tr[data-live-consul='true']").forEach(row => row.remove());
-
-        const entries = Object.entries(services);
-        for (const [serviceId, service] of entries) {
-          const name = service.Service || service.service || service.Name || service.name || serviceId;
-          const id = service.ID || serviceId;
-          const address = service.Address || service.address || "127.0.0.1";
-          const port = Number(service.Port || service.port || 0);
-          const tags = Array.isArray(service.Tags) ? service.Tags : (Array.isArray(service.tags) ? service.tags : []);
-          const provider = ["AWS", "GCP", "Azure"].find(cloud => tags.some(tag => String(tag).toUpperCase() === cloud)) || "Local";
-          const status = "Registered";
-          const healthPath = tags.find(tag => String(tag).startsWith("health:"));
-          const healthUrl = healthPath ? healthPath.slice(7) : `http://${address}:${port}/health`;
-
-          const row = document.createElement("tr");
-          row.dataset.liveConsul = "true";
-          row.dataset.ip = address;
-          row.dataset.name = name;
-          row.dataset.port = String(port);
-          row.dataset.provider = provider;
-          row.dataset.status = status;
-          row.className = "hover:bg-surface-container-low/60 transition-colors group bg-primary-fixed/20";
-          row.innerHTML = `
-          <td class="py-3 px-space-md"><div class="flex items-center gap-space-sm"><div class="w-7 h-7 rounded-md bg-secondary-container text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">cloud_done</span></div><div class="flex flex-col"><span class="font-label-lg text-label-lg font-medium text-on-surface">${escapeHtml(name)}</span><span class="font-code-sm text-code-sm text-secondary">Live from Consul</span></div></div></td>
-          <td class="py-3 px-space-md"><span class="font-code-sm text-code-sm bg-surface-container px-2 py-0.5 rounded text-on-surface">${escapeHtml(id)}</span></td>
-          <td class="py-3 px-space-md"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold bg-surface-container-high text-on-surface"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>${escapeHtml(provider)}${provider === "Local" ? " • local simulation" : ""}</span></td>
-          <td class="py-3 px-space-md font-code-md text-code-md text-on-surface">${escapeHtml(address)}</td>
-          <td class="py-3 px-space-md"><div class="flex items-center gap-1 font-code-md text-code-md text-on-surface"><span class="font-bold">${port || "—"}</span><span class="text-secondary text-[11px]">/ HTTP</span></div></td>
-          <td class="py-3 px-space-md"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-md text-label-md bg-surface-container text-tertiary font-medium"><span class="w-2 h-2 rounded-full bg-tertiary"></span>Registered</span></td>
-          <td class="py-3 px-space-md"><a class="font-code-sm text-code-sm text-primary hover:underline flex items-center gap-1" href="${escapeHtml(healthUrl)}" target="_blank" rel="noreferrer"><span>${escapeHtml(healthUrl)}</span><span class="material-symbols-outlined text-[13px]">open_in_new</span></a></td>
-          <td class="py-3 px-space-md text-right"><span class="font-code-sm text-code-sm text-tertiary">Consul API</span></td>`;
-          tbody.prepend(row);
-        }
-
-        const feedback = document.getElementById("registrationFeedback");
-        const msg = document.getElementById("feedbackMsg");
-        if (feedback && msg) {
-          feedback.className = "rounded-lg p-space-sm flex items-center justify-between bg-surface-container text-tertiary";
-          msg.textContent = `Backend connected. ${entries.length} live service(s) loaded from Consul.`;
-          feedback.classList.remove("hidden");
-        }
-        if (typeof filterRegistry === "function") filterRegistry();
-        const count = document.getElementById("visibleRowCount");
-        if (count) count.textContent = tbody.querySelectorAll("tr:not([style*='display: none'])").length;
-      } catch (error) {
-        console.error("Could not load services from backend:", error);
-        const feedback = document.getElementById("registrationFeedback");
-        const msg = document.getElementById("feedbackMsg");
-        if (feedback && msg) {
-          feedback.className = "rounded-lg p-space-sm flex items-center justify-between bg-error-container text-error";
-          msg.textContent = "Could not load live services. Check that the Express backend and Consul are running.";
-          feedback.classList.remove("hidden");
-        }
-      }
-    }
-
-    loadServicesFromBackend();
-    // Refresh live Consul entries every 10 seconds.
-    setInterval(loadServicesFromBackend, 10000);
-  </script>
 </body>
 
 </html>
