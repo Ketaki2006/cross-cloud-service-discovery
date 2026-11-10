@@ -3,6 +3,8 @@ import {
   DiscoveryResponse,
   HealthResponse,
   RegisterServicePayload,
+  CrossCloudPaymentResult,
+  CrossCloudTelemetry,
 } from '../types';
 
 const API_BASE = '';
@@ -67,6 +69,28 @@ export async function getHealthChecks(): Promise<HealthResponse> {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || `Failed to fetch health checks (HTTP ${res.status})`);
   }
+  return res.json();
+}
+
+export async function triggerCrossCloudPayment(
+  userId = 'usr_101',
+  amount = 150,
+  currency = 'USD'
+): Promise<CrossCloudPaymentResult> {
+  const res = await fetch(`${API_BASE}/api/cross-cloud/pay`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, amount, currency }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.status !== 'success') {
+    throw new Error(data.message || `Cross-cloud payment failed (HTTP ${res.status})`);
+  }
+  return data;
+}
+
+export async function getCrossCloudTelemetry(): Promise<CrossCloudTelemetry> {
+  const res = await fetch(`${API_BASE}/api/cross-cloud/telemetry`);
   return res.json();
 }
 

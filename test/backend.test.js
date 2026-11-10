@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const API_BASE = 'http://localhost:3000';
 const PAYMENT_BASE = 'http://127.0.0.1:8001';
+const USER_BASE = 'http://127.0.0.1:8002';
 
 describe('Cross-Cloud Service Discovery Registry Test Suite', () => {
 
@@ -254,6 +255,63 @@ describe('Cross-Cloud Service Discovery Registry Test Suite', () => {
       // Verify that payment-service actually returns 200 again
       const probeRes = await fetch(`${PAYMENT_BASE}/health`);
       assert.equal(probeRes.status, 200);
+    });
+  });
+
+  describe('Task 5: Real Cross-Cloud Microservice Communication (User Service -> Payment Service)', () => {
+
+    it('GET / on user service should return metadata with cloud provider AWS', async () => {
+      const res = await fetch(`${USER_BASE}/`);
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.service, 'user-service');
+      assert.equal(data.cloud, 'AWS');
+    });
+
+    it('GET /health on user service should return passing status', async () => {
+      const res = await fetch(`${USER_BASE}/health`);
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.status, 'healthy');
+      assert.equal(data.checks.httpListener, 'PASSING');
+    });
+
+    it('POST /api/payments/process on payment service should process direct payment', async () => {
+      const res = await fetch(`${PAYMENT_BASE}/api/payments/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'usr_test_1', amount: 150, currency: 'USD' })
+      });
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.status, 'success');
+      assert.ok(data.transactionId);
+      assert.equal(data.amount, 150);
+    });
+
+    it('POST /api/cross-cloud/pay should discover Payment Service and execute cross-cloud transfer', async () => {
+      const res = await fetch(`${API_BASE}/api/cross-cloud/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'usr_101', amount: 75, currency: 'USD' })
+      });
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.status, 'success');
+      assert.equal(data.crossCloud, true);
+      assert.equal(data.source.service, 'user-service');
+      assert.equal(data.discoveredTarget.service, 'payment-service');
+      assert.ok(data.latencyMs >= 0);
+      assert.ok(data.payment.transactionId);
+    });
+
+    it('GET /api/cross-cloud/telemetry should return live communication metrics', async () => {
+      const res = await fetch(`${API_BASE}/api/cross-cloud/telemetry`);
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.status, 'success');
+      assert.ok(data.telemetry.totalRequests >= 1);
+      assert.ok(data.telemetry.successfulRequests >= 1);
     });
   });
 

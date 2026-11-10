@@ -90,3 +90,71 @@ export interface DiscoveryResponse {
   message?: string;
 }
 
+export interface CrossCloudPaymentResult {
+  status: string;
+  crossCloud: boolean;
+  source: {
+    service: string;
+    cloud: string;
+    port: number;
+    user: { id: string; name: string };
+  };
+  discoveredTarget: {
+    service: string;
+    instanceId: string;
+    cloud: string;
+    address: string;
+    port: number;
+    url: string;
+  };
+  latencyMs: number;
+  payment: {
+    status: string;
+    transactionId: string;
+    userId: string;
+    amount: number;
+    currency: string;
+    description: string;
+    service: string;
+    cloud: string;
+    processedAt: string;
+    message: string;
+  };
+  timestamp: string;
+}
+
+export interface CrossCloudTelemetry {
+  status: string;
+  service: string;
+  cloud: string;
+  telemetry: {
+    totalRequests: number;
+    successfulRequests: number;
+    failedRequests: number;
+    lastRequest: {
+      timestamp: string;
+      status: string;
+      userId: string;
+      amount: number;
+      sourceCloud: string;
+      targetCloud: string;
+      targetAddress: string;
+      transactionId?: string;
+      latencyMs?: number;
+      error?: string;
+    } | null;
+    recentHistory: Array<{
+      timestamp: string;
+      status: string;
+      userId: string;
+      amount: number;
+      sourceCloud: string;
+      targetCloud: string;
+      targetAddress: string;
+      transactionId?: string;
+      latencyMs?: number;
+      error?: string;
+    }>;
+  };
+}
+

@@ -1,6 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getServices, getHealthChecks, getConsulStatus, deregisterService } from '../services/api';
-import { ServiceRecord } from '../types';
+import {
+  getServices,
+  getHealthChecks,
+  getConsulStatus,
+  deregisterService,
+  triggerCrossCloudPayment,
+  getCrossCloudTelemetry
+} from '../services/api';
+import { ServiceRecord, CrossCloudPaymentResult, CrossCloudTelemetry } from '../types';
 import { useToast } from '../components/Toast';
 import { RegisterServiceModal } from '../components/RegisterServiceModal';
 
@@ -31,6 +38,27 @@ export const Dashboard: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'aws' | 'gcp' | 'azure'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [telemetry, setTelemetry] = useState<CrossCloudTelemetry | null>(null);
+  const [isExecutingCrossCloud, setIsExecutingCrossCloud] = useState(false);
+  const [crossCloudResult, setCrossCloudResult] = useState<CrossCloudPaymentResult | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('150');
+
+  const handleTriggerCrossCloud = async () => {
+    setIsExecutingCrossCloud(true);
+    try {
+      const res = await triggerCrossCloudPayment('usr_101', Number(paymentAmount) || 100);
+      setCrossCloudResult(res);
+      showToast(`Cross-Cloud Success: AWS User Service -> GCP Payment Service (${res.latencyMs}ms)`, 'success');
+      const updatedTelem = await getCrossCloudTelemetry().catch(() => null);
+      if (updatedTelem) setTelemetry(updatedTelem);
+    } catch (err: any) {
+      showToast(`Cross-Cloud Call Failed: ${err.message}`, 'error');
+      const updatedTelem = await getCrossCloudTelemetry().catch(() => null);
+      if (updatedTelem) setTelemetry(updatedTelem);
+    } finally {
+      setIsExecutingCrossCloud(false);
+    }
+  };
 
   const fetchOverviewData = useCallback(async () => {
     try {
@@ -82,6 +110,7 @@ export const Dashboard: React.FC = () => {
       }
 
       setServices(merged);
+      getCrossCloudTelemetry().then(setTelemetry).catch(() => null);
     } catch (err) {
       console.error('Error fetching overview data:', err);
       setServices([...DEMO_OVERVIEW_SERVICES]);
@@ -454,6 +483,121 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Real Cross-Cloud Microservice Communication Panel */}
+      <div className="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm border border-primary/20">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pb-space-sm border-b border-surface-container-high/60">
+          <div className="flex items-center gap-space-sm">
+            <div className="w-10 h-10 rounded-lg bg-primary-container/30 flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined text-[24px]">sync_alt</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-headline-md text-headline-md text-on-surface">Real Cross-Cloud Service Communication</h2>
+                <span className="inline-flex items-center gap-1 font-code-sm text-code-sm px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span> Live WireGuard / Mesh Link
+                </span>
+              </div>
+              <p className="font-body-sm text-body-sm text-secondary">
+                AWS User Service (Port 8002) dynamically discovers & dispatches payments to GCP Payment Service (Port 8001) via Consul
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-space-sm">
+            <div className="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-surface-container">
+              <span className="font-code-sm text-code-sm text-secondary">Amount ($):</span>
+              <input
+                type="number"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="w-20 bg-surface-container text-on-surface font-code-sm text-code-sm px-2 py-0.5 rounded outline-none border border-outline-variant/30 text-right font-medium"
+                min="1"
+              />
+            </div>
+            <button
+              onClick={handleTriggerCrossCloud}
+              disabled={isExecutingCrossCloud}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold hover:bg-primary/90 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+            >
+              {isExecutingCrossCloud ? (
+                <>
+                  <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                  <span>Discovering & Paying...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">send</span>
+                  <span>Execute Cross-Cloud Payment</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Topology & Telemetry Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-space-md mt-space-md">
+          <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low border border-surface-container">
+            <span className="font-code-sm text-code-sm text-secondary uppercase">Source Node</span>
+            <div className="font-body-md text-body-md font-semibold text-on-surface mt-1 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-primary"></span>
+              AWS User Service
+            </div>
+            <span className="font-code-sm text-code-sm text-on-surface-variant font-mono mt-0.5">Port 8002 · us-east-1</span>
+          </div>
+
+          <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low border border-surface-container">
+            <span className="font-code-sm text-code-sm text-secondary uppercase">Discovery Mechanism</span>
+            <div className="font-body-md text-body-md font-semibold text-on-surface mt-1 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-tertiary"></span>
+              HashiCorp Consul
+            </div>
+            <span className="font-code-sm text-code-sm text-on-surface-variant font-mono mt-0.5">:8500 /v1/health/service</span>
+          </div>
+
+          <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low border border-surface-container">
+            <span className="font-code-sm text-code-sm text-secondary uppercase">Target Node</span>
+            <div className="font-body-md text-body-md font-semibold text-on-surface mt-1 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-secondary"></span>
+              GCP Payment Service
+            </div>
+            <span className="font-code-sm text-code-sm text-on-surface-variant font-mono mt-0.5">Port 8001 · us-central1</span>
+          </div>
+
+          <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low border border-surface-container">
+            <span className="font-code-sm text-code-sm text-secondary uppercase">Cross-Cloud Telemetry</span>
+            <div className="font-body-md text-body-md font-semibold text-on-surface mt-1 flex items-center justify-between">
+              <span className="text-tertiary">{telemetry?.telemetry?.successfulRequests ?? 0} Success</span>
+              <span className="text-error">{telemetry?.telemetry?.failedRequests ?? 0} Failed</span>
+            </div>
+            <span className="font-code-sm text-code-sm text-secondary mt-0.5">Total: {telemetry?.telemetry?.totalRequests ?? 0} calls</span>
+          </div>
+        </div>
+
+        {/* Last Transaction Result Banner */}
+        {crossCloudResult && (
+          <div className="mt-space-md p-space-sm rounded-lg bg-surface-container-low/90 border border-tertiary/30 flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-tertiary text-[20px]">check_circle</span>
+              <div className="font-code-sm text-code-sm">
+                <span className="font-semibold text-on-surface">Txn ID: {crossCloudResult.payment?.transactionId}</span>
+                <span className="text-secondary ml-2">
+                  • Discovered Target: <code className="text-primary font-mono">{crossCloudResult.discoveredTarget?.address}:{crossCloudResult.discoveredTarget?.port}</code>
+                </span>
+                <span className="text-secondary ml-2">
+                  • User: <span className="text-on-surface">{crossCloudResult.source?.user?.name}</span>
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 font-code-sm text-code-sm">
+              <span className="px-2 py-0.5 rounded bg-surface-container font-mono text-tertiary font-semibold">
+                ⏱ {crossCloudResult.latencyMs} ms
+              </span>
+              <span className="text-secondary">{new Date(crossCloudResult.timestamp).toLocaleTimeString()}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main 2-Column Section */}

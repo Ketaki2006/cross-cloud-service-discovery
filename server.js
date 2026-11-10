@@ -7,6 +7,7 @@ const fs = require("fs");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const CONSUL_URL = process.env.CONSUL_URL || "http://localhost:8500";
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://127.0.0.1:8002";
 const AXIOS_TIMEOUT = 3000; // 3 seconds timeout to prevent hanging
 
 app.use(express.json());
@@ -67,6 +68,8 @@ app.get("/api", (req, res) => {
             "DELETE /api/services/:id": "Deregister a service from Consul",
             "GET /api/services/:name": "Discover service instances and health by service name",
             "GET /api/health": "Aggregated Consul health checks (passing/warning/critical)",
+            "POST /api/cross-cloud/pay": "Initiate cross-cloud payment via AWS User Service discovered Payment Service",
+            "GET /api/cross-cloud/telemetry": "Get live cross-cloud communication telemetry and history",
             "POST /api/scenarios/inject-fault": "Inject simulated HTTP 503 failure into payment service",
             "POST /api/scenarios/restore-health": "Restore payment service to healthy HTTP 200 state",
             "GET /api/scenarios/status": "Get current health state of simulated payment service"
@@ -398,7 +401,49 @@ app.get("/api/scenarios/status", async (req, res) => {
     }
 });
 
-// 11. Test Route
+// 11. Real Cross-Cloud Communication: Trigger Payment via User Service
+app.post("/api/cross-cloud/pay", async (req, res) => {
+    try {
+        const { userId = "usr_101", amount = 100, currency = "USD", description } = req.body || {};
+        const response = await axios.post(`${USER_SERVICE_URL}/api/users/${encodeURIComponent(userId)}/pay`, {
+            amount,
+            currency,
+            description
+        }, { timeout: 6000 });
+        res.status(response.status).json(response.data);
+    } catch (err) {
+        const status = err.response?.status || 502;
+        res.status(status).json({
+            status: "error",
+            code: "CROSS_CLOUD_GATEWAY_ERROR",
+            message: err.response?.data?.message || err.message,
+            details: err.response?.data || null
+        });
+    }
+});
+
+// 12. Real Cross-Cloud Telemetry
+app.get("/api/cross-cloud/telemetry", async (req, res) => {
+    try {
+        const response = await axios.get(`${USER_SERVICE_URL}/api/telemetry`, { timeout: 3000 });
+        res.json(response.data);
+    } catch (err) {
+        res.json({
+            status: "offline",
+            service: "user-service",
+            error: `User service unreachable at ${USER_SERVICE_URL}`,
+            telemetry: {
+                totalRequests: 0,
+                successfulRequests: 0,
+                failedRequests: 0,
+                lastRequest: null,
+                recentHistory: []
+            }
+        });
+    }
+});
+
+// 13. Test Route
 app.get("/api/test-route", (req, res) => {
     res.json({
         message: "Test route works!",

@@ -27,6 +27,7 @@ app.get("/", (req, res) => {
         endpoints: {
             root: "/",
             health: "/health",
+            processPayment: "POST /api/payments/process",
             simulateUnhealthy: "POST /simulate/unhealthy",
             simulateHealthy: "POST /simulate/healthy",
             simulateStatus: "GET /simulate/status"
@@ -64,6 +65,55 @@ app.get("/health", (req, res) => {
             ledgerDatabase: "UP (Simulated)",
             paymentGateway: "READY"
         }
+    });
+});
+
+// Real Cross-Cloud Payment Processing Endpoint
+app.post("/api/payments/process", (req, res) => {
+    const { userId, amount, currency, description } = req.body || {};
+
+    if (!userId || typeof userId !== "string" || !userId.trim()) {
+        return res.status(400).json({
+            status: "error",
+            field: "userId",
+            message: "User ID is required to process payment."
+        });
+    }
+
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+        return res.status(400).json({
+            status: "error",
+            field: "amount",
+            message: "Amount must be a positive number."
+        });
+    }
+
+    if (!isHealthy) {
+        console.log(`[PaymentService] Rejected payment for user ${userId}: Service is unhealthy (503).`);
+        return res.status(503).json({
+            status: "error",
+            error: "PAYMENT_SERVICE_UNAVAILABLE",
+            service: "payment-service",
+            cloud: process.env.CLOUD_PROVIDER || "GCP",
+            message: "Payment backend is currently unhealthy (simulated outage)."
+        });
+    }
+
+    const transactionId = `txn_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    console.log(`[PaymentService] Processed payment of $${numAmount} for user ${userId}. Txn ID: ${transactionId}`);
+
+    res.status(200).json({
+        status: "success",
+        transactionId,
+        userId: userId.trim(),
+        amount: numAmount,
+        currency: currency || "USD",
+        description: description || "Cross-cloud service fee",
+        service: "payment-service",
+        cloud: process.env.CLOUD_PROVIDER || "GCP",
+        processedAt: new Date().toISOString(),
+        message: "Payment processed successfully across clouds"
     });
 });
 
