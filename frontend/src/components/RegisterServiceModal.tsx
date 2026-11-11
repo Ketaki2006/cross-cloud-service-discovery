@@ -16,9 +16,9 @@ export const RegisterServiceModal: React.FC<RegisterServiceModalProps> = ({
   const { showToast } = useToast();
   const [name, setName] = useState('');
   const [id, setId] = useState('');
-  const [provider, setProvider] = useState('aws');
-  const [ip, setIp] = useState('10.0.1.40');
-  const [port, setPort] = useState('8004');
+  const [provider, setProvider] = useState('AZURE');
+  const [ip, setIp] = useState('10.8.0.2');
+  const [port, setPort] = useState('8001');
   const [healthPath, setHealthPath] = useState('/health');
   const [loading, setLoading] = useState(false);
 
@@ -37,8 +37,8 @@ export const RegisterServiceModal: React.FC<RegisterServiceModalProps> = ({
         port: Number(port),
         checkPath: healthPath.startsWith('/') ? healthPath.trim() : '/' + healthPath.trim(),
         interval: '10s',
-        timeout: '2s',
-        tags: [provider.toUpperCase(), 'microservice', 'college-demo'],
+        timeout: '3s',
+        tags: [provider.toUpperCase()],
       });
 
       showToast(`Service "${name}" (${id}) registered with Consul successfully!`, 'success');
@@ -104,10 +104,10 @@ export const RegisterServiceModal: React.FC<RegisterServiceModalProps> = ({
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
               >
-                <option value="aws">Amazon Web Services (AWS)</option>
-                <option value="gcp">Google Cloud Platform (GCP)</option>
-                <option value="azure">Microsoft Azure</option>
-                <option value="local">Local (Simulation)</option>
+                <option value="AWS">Amazon Web Services (AWS)</option>
+                <option value="AZURE">Microsoft Azure (AZURE)</option>
+                <option value="GCP">Google Cloud Platform (GCP)</option>
+                <option value="LOCAL">Local Host</option>
               </select>
             </div>
           </div>
@@ -117,7 +117,7 @@ export const RegisterServiceModal: React.FC<RegisterServiceModalProps> = ({
               <label className="block font-label-md text-label-md text-on-surface font-medium mb-1">IP Address</label>
               <input
                 className="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-sm text-code-sm focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-                placeholder="10.0.1.40"
+                placeholder="10.8.0.2"
                 required
                 type="text"
                 value={ip}
@@ -128,7 +128,7 @@ export const RegisterServiceModal: React.FC<RegisterServiceModalProps> = ({
               <label className="block font-label-md text-label-md text-on-surface font-medium mb-1">Port</label>
               <input
                 className="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-sm text-code-sm focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-                placeholder="8004"
+                placeholder="8001"
                 required
                 type="number"
                 value={port}

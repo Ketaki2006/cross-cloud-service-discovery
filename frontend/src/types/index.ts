@@ -1,16 +1,25 @@
+export type HealthState = 'PASSING' | 'CRITICAL' | 'WARNING' | 'UNKNOWN';
+
 export interface ServiceRecord {
   id: string;
   name: string;
   serviceName?: string;
-  provider: 'AWS' | 'GCP' | 'Azure' | 'Hybrid' | 'Local' | string;
+  provider: 'AWS' | 'AZURE' | 'GCP' | 'Hybrid' | 'Local' | string;
   providerRegion?: string;
+  region?: string;
   address: string;
   port: number;
-  status: 'Healthy' | 'Unhealthy' | 'passing' | 'critical' | 'warning';
+  status: 'Healthy' | 'Unhealthy' | 'passing' | 'critical' | 'warning' | 'unknown' | HealthState;
+  healthStatus?: HealthState;
   healthUrl?: string;
   healthPath?: string;
   version?: string;
   tags?: string[];
+  node?: string;
+  datacenter?: string;
+  excludedFromDiscovery?: boolean;
+  lastCheckId?: string;
+  lastCheckOutput?: string;
   isSample: boolean;
 }
 
@@ -18,7 +27,11 @@ export interface ConsulStatusResponse {
   status: string;
   connected: boolean;
   consulUrl: string;
-  leader: string;
+  leader: string | null;
+  datacenter?: string | null;
+  nodeName?: string | null;
+  version?: string | null;
+  latencyMs?: number;
   timestamp?: string;
   message?: string;
   error?: string;
@@ -60,19 +73,35 @@ export interface RegisterServicePayload {
 }
 
 export interface DiscoveredInstance {
-  Node: {
+  id?: string;
+  name?: string;
+  address?: string;
+  port?: number;
+  tags?: string[];
+  provider?: string;
+  node?: string;
+  datacenter?: string;
+  status?: string;
+  checks?: Array<{
+    checkId?: string;
+    checkID?: string;
+    name: string;
+    status: string;
+    output: string;
+  }>;
+  Node?: {
     Node: string;
     Address: string;
     Datacenter?: string;
   };
-  Service: {
+  Service?: {
     ID: string;
     Service: string;
     Tags: string[];
     Address: string;
     Port: number;
   };
-  Checks: Array<{
+  Checks?: Array<{
     CheckID: string;
     Name: string;
     Status: string;
@@ -82,12 +111,90 @@ export interface DiscoveredInstance {
 
 export interface DiscoveryResponse {
   status: string;
-  service: string;
+  service?: string;
+  serviceName?: string;
   totalInstances: number;
-  passingInstances: number;
+  passingInstances?: number;
   passingOnly?: boolean;
   instances: DiscoveredInstance[];
   message?: string;
+}
+
+export interface ConsulCatalogEntry {
+  id: string;
+  name: string;
+  provider: string;
+  region: string;
+  address: string;
+  port: number;
+  tags: string[];
+  node: string;
+  datacenter: string;
+  healthStatus: HealthState;
+  excludedFromDiscovery: boolean;
+  lastCheckId: string;
+  lastCheckOutput: string;
+  checkPath: string;
+  healthUrl: string | null;
+}
+
+export interface ConsulCatalogResponse {
+  status: string;
+  count: number;
+  catalogNames: string[];
+  instances: ConsulCatalogEntry[];
+  timestamp: string;
+}
+
+export interface PaymentHealthCheckResponse {
+  status: string;
+  serviceName: string;
+  healthState: HealthState;
+  totalRegistered: number;
+  passingCount: number;
+  excludedFromDiscovery: boolean;
+  instances: Array<{
+    id: string;
+    name: string;
+    provider: string;
+    address: string;
+    port: number;
+    tags: string[];
+    node: string;
+    datacenter: string;
+    healthStatus: HealthState;
+    excludedFromDiscovery: boolean;
+    lastCheckId: string;
+    lastCheckOutput: string;
+    checks: any[];
+  }>;
+  passingInstances: any[];
+  checkedAt: string;
+  message?: string;
+}
+
+export interface UserRecord {
+  id: string;
+  name: string;
+  email: string;
+  tier: string;
+  balance: number;
+}
+
+export interface CrossCloudTransactionRecord {
+  timestamp: string;
+  status: string;
+  userId: string;
+  amount: number;
+  currency?: string;
+  description?: string;
+  sourceCloud: string;
+  targetCloud: string;
+  discoveredServiceId?: string;
+  targetAddress?: string;
+  transactionId?: string;
+  latencyMs?: number;
+  error?: string;
 }
 
 export interface CrossCloudPaymentResult {
@@ -96,6 +203,7 @@ export interface CrossCloudPaymentResult {
   source: {
     service: string;
     cloud: string;
+    region?: string;
     port: number;
     user: { id: string; name: string };
   };
@@ -117,6 +225,7 @@ export interface CrossCloudPaymentResult {
     description: string;
     service: string;
     cloud: string;
+    region?: string;
     processedAt: string;
     message: string;
   };
@@ -127,34 +236,82 @@ export interface CrossCloudTelemetry {
   status: string;
   service: string;
   cloud: string;
+  region?: string;
+  persistence?: string;
+  storageNote?: string;
+  error?: string;
   telemetry: {
     totalRequests: number;
     successfulRequests: number;
     failedRequests: number;
-    lastRequest: {
-      timestamp: string;
-      status: string;
-      userId: string;
-      amount: number;
-      sourceCloud: string;
-      targetCloud: string;
-      targetAddress: string;
-      transactionId?: string;
-      latencyMs?: number;
-      error?: string;
-    } | null;
-    recentHistory: Array<{
-      timestamp: string;
-      status: string;
-      userId: string;
-      amount: number;
-      sourceCloud: string;
-      targetCloud: string;
-      targetAddress: string;
-      transactionId?: string;
-      latencyMs?: number;
-      error?: string;
-    }>;
+    lastRequest: CrossCloudTransactionRecord | null;
+    recentHistory: CrossCloudTransactionRecord[];
   };
 }
 
+export interface DashboardOverviewResponse {
+  status: string;
+  timestamp: string;
+  consul: {
+    status: 'PASSING' | 'UNAVAILABLE';
+    connected: boolean;
+    leader: string | null;
+    datacenter: string | null;
+    nodeName?: string;
+    version?: string;
+    latencyMs?: number;
+    error?: string;
+  };
+  awsUserService: {
+    status: HealthState;
+    reachable: boolean;
+    cloud: string;
+    region: string;
+    port: number;
+    uptimeSeconds?: number | null;
+    latencyMs?: number;
+    checks?: Record<string, string> | null;
+    timestamp?: string;
+    error?: string;
+  };
+  azurePaymentService: {
+    status: HealthState;
+    registered: boolean;
+    excludedFromDiscovery: boolean;
+    serviceId?: string;
+    serviceName?: string;
+    cloud: string;
+    region: string;
+    address?: string;
+    port?: number;
+    tags?: string[];
+    datacenter?: string;
+    passingCount?: number;
+    totalCount?: number;
+    lastCheckOutput?: string;
+    error?: string;
+  };
+  wireguard: {
+    status: 'CONNECTED' | 'DEGRADED' | 'LOCAL_DIRECT' | 'UNKNOWN';
+    detail: string;
+    awsWgIp: string;
+    azureWgIp: string;
+    port: number;
+    hostInterfaceDetected: boolean;
+  };
+  telemetry: {
+    available: boolean;
+    persistence: string;
+    storageNote: string;
+    totalRequests: number | null;
+    successfulRequests: number | null;
+    failedRequests: number | null;
+    lastRequest: CrossCloudTransactionRecord | null;
+    recentHistory: CrossCloudTransactionRecord[];
+    error?: string;
+  };
+  architecture: {
+    aws: { provider: string; region: string; wgIp: string; userPort: number; consulPort: number };
+    azure: { provider: string; region: string; wgIp: string; paymentPort: number };
+  };
+}

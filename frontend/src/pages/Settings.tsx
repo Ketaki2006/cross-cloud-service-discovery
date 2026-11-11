@@ -1,22 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import { getConsulStatus, getApiOverview } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  getConsulStatus,
+  getApiOverview,
+  getDashboardOverview,
+  getApiBaseUrl,
+} from '../services/api';
+import { ConsulStatusResponse, DashboardOverviewResponse } from '../types';
 import { useToast } from '../components/Toast';
 
 export const Settings: React.FC = () => {
   const { showToast } = useToast();
 
-  // Test states
-  const [consulTestStatus, setConsulTestStatus] = useState<string>('Latency: 1.4ms • Leader reachable');
+  // Live infrastructure states (never assumed healthy!)
+  const [consulStatus, setConsulStatus] = useState<ConsulStatusResponse | null>(null);
+  const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
+  const [consulTestStatus, setConsulTestStatus] = useState<string>('Checking Consul status...');
   const [consulTestLoading, setConsulTestLoading] = useState(false);
 
-  const [apiTestStatus, setApiTestStatus] = useState<string>('Active • Listening on :3000');
+  const [apiTestStatus, setApiTestStatus] = useState<string>('Checking Gateway API...');
   const [apiTestLoading, setApiTestLoading] = useState(false);
 
   // Preference states
-  const [pollingInterval, setPollingInterval] = useState('5s');
+  const [pollingInterval, setPollingInterval] = useState('10s');
   const [logLevel, setLogLevel] = useState('info');
   const [enableNotifications, setEnableNotifications] = useState(true);
   const [compactRows, setCompactRows] = useState(false);
+
+  const handleTestConsul = useCallback(async (silent = false) => {
+    setConsulTestLoading(true);
+    const start = Date.now();
+    try {
+      const data = await getConsulStatus();
+      setConsulStatus(data);
+      const latency = Date.now() - start;
+      if (data.connected) {
+        setConsulTestStatus(`Connected (${latency}ms) • Leader ${data.leader}`);
+        if (!silent) showToast(`Consul connected (${latency}ms) — Datacenter: ${data.datacenter}`, 'success');
+      } else {
+        setConsulTestStatus('Unavailable — Consul agent offline');
+        if (!silent) showToast('Consul agent is offline or unreachable.', 'error');
+      }
+    } catch (err: any) {
+      setConsulStatus(null);
+      setConsulTestStatus(`Unavailable: ${err.message}`);
+      if (!silent) showToast(`Consul test failed: ${err.message}`, 'error');
+    } finally {
+      setConsulTestLoading(false);
+    }
+  }, [showToast]);
+
+  const handleTestApi = useCallback(async (silent = false) => {
+    setApiTestLoading(true);
+    const start = Date.now();
+    try {
+      const [apiData, ovData] = await Promise.all([
+        getApiOverview(),
+        getDashboardOverview().catch(() => null),
+      ]);
+      if (ovData) setOverview(ovData);
+      const latency = Date.now() - start;
+      if (apiData.status === 'running') {
+        setApiTestStatus(`HTTP 200 OK (${latency}ms) • Express Gateway :${apiData.port}`);
+        if (!silent) showToast(`Express Gateway v${apiData.version || '1.1.0'} online (${latency}ms)`, 'success');
+      } else {
+        setApiTestStatus('API returned non-running status');
+      }
+    } catch (err: any) {
+      setApiTestStatus(`Unavailable: ${err.message}`);
+      if (!silent) showToast(`Express Gateway unreachable: ${err.message}`, 'error');
+    } finally {
+      setApiTestLoading(false);
+    }
+  }, [showToast]);
 
   useEffect(() => {
     const savedPolling = localStorage.getItem('cc_polling_interval');
@@ -24,52 +79,10 @@ export const Settings: React.FC = () => {
 
     const savedLogLevel = localStorage.getItem('cc_log_level');
     if (savedLogLevel) setLogLevel(savedLogLevel);
-  }, []);
 
-  const handleTestConsul = async () => {
-    setConsulTestLoading(true);
-    setConsulTestStatus('Probing Consul leader...');
-    const start = Date.now();
-
-    try {
-      const data = await getConsulStatus();
-      const latency = Date.now() - start;
-      if (data.connected) {
-        setConsulTestStatus(`Latency: ${latency}ms • Leader ${data.leader} reachable`);
-        showToast(`Consul connected (${latency}ms) - Leader: ${data.leader}`, 'success');
-      } else {
-        setConsulTestStatus('Consul daemon is offline. Run: consul agent -dev');
-        showToast('Consul daemon is offline. Run: consul agent -dev', 'error');
-      }
-    } catch (err: any) {
-      setConsulTestStatus(`Error: ${err.message}`);
-      showToast(`Consul test failed: ${err.message}`, 'error');
-    } finally {
-      setConsulTestLoading(false);
-    }
-  };
-
-  const handleTestApi = async () => {
-    setApiTestLoading(true);
-    setApiTestStatus('Testing Express API...');
-    const start = Date.now();
-
-    try {
-      const data = await getApiOverview();
-      const latency = Date.now() - start;
-      if (data.status === 'running') {
-        setApiTestStatus(`HTTP 200 OK (${latency}ms) — Express :${data.port} responsive`);
-        showToast(`Express API v${data.version || '1.0.0'} online on port ${data.port} (${latency}ms)`, 'success');
-      } else {
-        setApiTestStatus('API returned non-running status');
-      }
-    } catch (err: any) {
-      setApiTestStatus(`API unreachable: ${err.message}`);
-      showToast(`Express API unreachable: ${err.message}`, 'error');
-    } finally {
-      setApiTestLoading(false);
-    }
-  };
+    handleTestConsul(true);
+    handleTestApi(true);
+  }, [handleTestConsul, handleTestApi]);
 
   const savePreferences = () => {
     localStorage.setItem('cc_polling_interval', pollingInterval);
@@ -78,14 +91,16 @@ export const Settings: React.FC = () => {
   };
 
   const resetPreferences = () => {
-    setPollingInterval('5s');
+    setPollingInterval('10s');
     setLogLevel('info');
     setEnableNotifications(true);
     setCompactRows(false);
     localStorage.removeItem('cc_polling_interval');
     localStorage.removeItem('cc_log_level');
-    showToast('Settings reset to system default values.', 'info');
+    showToast('Settings reset to defaults.', 'info');
   };
+
+  const gatewayBaseUrl = `${getApiBaseUrl()}/api`;
 
   return (
     <div className="flex flex-col w-full gap-space-lg">
@@ -95,15 +110,13 @@ export const Settings: React.FC = () => {
           <div className="flex items-center gap-space-sm text-secondary font-code-sm text-code-sm uppercase tracking-wider">
             <span>Control Plane</span>
             <span>/</span>
-            <span>Configuration &amp; Agents</span>
-            <span>/</span>
-            <span className="text-primary font-medium">Cluster Parameters</span>
+            <span className="text-primary font-medium">Cluster &amp; Mesh Diagnostics</span>
           </div>
           <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight">
-            Mesh Settings &amp; Agent Configuration
+            Mesh Settings &amp; Architecture Diagnostics
           </h1>
           <p className="font-body-lg text-body-lg text-secondary mt-1">
-            Manage HashiCorp Consul local agent connectivity, Express backend routes, and UI telemetry preferences.
+            Inspect HashiCorp Consul connectivity on AWS EC2, Express backend gateway proxy, and cross-cloud VPN status.
           </p>
         </div>
         <button
@@ -111,13 +124,13 @@ export const Settings: React.FC = () => {
           className="flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg transition-colors shadow-sm self-start lg:self-auto"
         >
           <span className="material-symbols-outlined text-[18px]">save</span>
-          <span>Save Changes</span>
+          <span>Save Preferences</span>
         </button>
       </div>
 
-      {/* 2 Main Configuration Cards */}
+      {/* 2 Main Diagnostic Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-lg">
-        {/* Card 1: Consul Agent */}
+        {/* Card 1: Consul Server on AWS EC2 */}
         <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
           <div className="flex flex-col gap-space-md">
             <div className="flex items-start justify-between">
@@ -126,42 +139,23 @@ export const Settings: React.FC = () => {
                   <span className="material-symbols-outlined text-[24px]">dns</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-headline-md text-headline-md text-on-surface">HashiCorp Consul Agent</span>
-                  <span className="font-code-sm text-code-sm text-on-surface-variant">Local Server Daemon</span>
+                  <span className="font-headline-md text-headline-md text-on-surface">HashiCorp Consul Server</span>
+                  <span className="font-code-sm text-code-sm text-on-surface-variant">Shielded on AWS Loopback / WireGuard</span>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container-low text-tertiary font-code-sm text-code-sm font-semibold">
-                <span className="inline-block w-2 h-2 rounded-full bg-tertiary-container"></span>
-                Active • Dev Cluster dc1
+              <span
+                className={`inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full font-code-sm text-code-sm font-semibold ${
+                  consulStatus?.connected
+                    ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                    : 'bg-error-container text-on-error-container'
+                }`}
+              >
+                <span className={`inline-block w-2 h-2 rounded-full ${consulStatus?.connected ? 'bg-tertiary' : 'bg-error'}`}></span>
+                {consulStatus?.connected ? `Active • ${consulStatus.datacenter}` : 'Unavailable'}
               </span>
             </div>
 
             <div className="flex flex-col gap-space-sm mt-space-xs">
-              <div className="flex flex-col gap-1">
-                <label className="font-label-md text-label-md text-on-surface font-medium flex items-center justify-between">
-                  <span>Consul HTTP API Endpoint</span>
-                  <span className="font-code-sm text-code-sm text-on-surface-variant font-normal">Port: 8500</span>
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    className="w-full pl-3 pr-10 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                    readOnly
-                    type="text"
-                    value="http://localhost:8500"
-                  />
-                  <button
-                    className="absolute right-2 p-1 text-on-surface-variant hover:text-primary transition-colors"
-                    onClick={() => {
-                      navigator.clipboard.writeText('http://localhost:8500');
-                      showToast('Consul URL copied to clipboard!', 'success');
-                    }}
-                    title="Copy URL"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                  </button>
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-space-sm">
                 <div className="flex flex-col gap-1">
                   <label className="font-label-md text-label-md text-on-surface font-medium">Datacenter ID</label>
@@ -169,26 +163,32 @@ export const Settings: React.FC = () => {
                     className="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md"
                     readOnly
                     type="text"
-                    value="dc1"
+                    value={consulStatus?.connected ? consulStatus.datacenter || 'Unknown' : 'Unavailable'}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="font-label-md text-label-md text-on-surface font-medium">Raft RPC Port</label>
+                  <label className="font-label-md text-label-md text-on-surface font-medium">Node Name</label>
                   <input
                     className="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md"
                     readOnly
                     type="text"
-                    value="8300"
+                    value={consulStatus?.connected ? consulStatus.nodeName || 'Unknown' : 'Unavailable'}
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="font-label-md text-label-md text-on-surface font-medium">Serf LAN / WAN Gossip</label>
-                <div className="flex items-center gap-space-sm p-2 rounded-lg bg-surface-container-low font-code-sm text-code-sm text-on-surface">
-                  <span className="material-symbols-outlined text-tertiary text-[18px]">sensors</span>
-                  <span>Port: 8301 (LAN Serf) • Port: 8302 (WAN Serf)</span>
+                <label className="font-label-md text-label-md text-on-surface font-medium">WireGuard Cross-Cloud Tunnel</label>
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low font-code-sm text-code-sm text-on-surface">
+                  <span>
+                    AWS ({overview?.wireguard?.awsWgIp || '10.8.0.1'}) ↔ Azure ({overview?.wireguard?.azureWgIp || '10.8.0.2'}) • UDP 51820
+                  </span>
+                  <span className="font-semibold text-primary">{overview?.wireguard?.status || 'UNKNOWN'}</span>
                 </div>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-surface-container-low/70 font-code-sm text-[11px] text-secondary">
+                Security Note: Consul HTTP port 8500 is NOT exposed publicly. All frontend calls traverse the Express Backend proxy.
               </div>
             </div>
           </div>
@@ -196,22 +196,21 @@ export const Settings: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-sm pt-space-md border-t border-surface-container mt-space-md">
             <button
               disabled={consulTestLoading}
-              onClick={handleTestConsul}
+              onClick={() => handleTestConsul(false)}
               className="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-colors"
             >
               <span className={`material-symbols-outlined text-[16px] text-primary ${consulTestLoading ? 'animate-spin' : ''}`}>
                 network_ping
               </span>
-              <span>Test Connection</span>
+              <span>Test Consul</span>
             </button>
             <div className="flex items-center gap-1.5 px-space-sm py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
               <span>{consulTestStatus}</span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Express Application API */}
+        {/* Card 2: Express Backend Gateway */}
         <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
           <div className="flex flex-col gap-space-md">
             <div className="flex items-start justify-between">
@@ -220,34 +219,36 @@ export const Settings: React.FC = () => {
                   <span className="material-symbols-outlined text-[24px]">terminal</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-headline-md text-headline-md text-on-surface">Express Application API</span>
-                  <span className="font-code-sm text-code-sm text-on-surface-variant">Node.js Gateway Router</span>
+                  <span className="font-headline-md text-headline-md text-on-surface">Express Backend Gateway</span>
+                  <span className="font-code-sm text-code-sm text-on-surface-variant">API Proxy &amp; SPA Host</span>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container-low text-tertiary font-code-sm text-code-sm font-semibold">
-                <span className="inline-block w-2 h-2 rounded-full bg-tertiary-container"></span>
-                Active • Listening on :3000
+              <span
+                className={`inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full font-code-sm text-code-sm font-semibold ${
+                  overview
+                    ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                    : 'bg-surface-container text-secondary'
+                }`}
+              >
+                {overview ? 'Online' : 'Checking...'}
               </span>
             </div>
 
             <div className="flex flex-col gap-space-sm mt-space-xs">
               <div className="flex flex-col gap-1">
-                <label className="font-label-md text-label-md text-on-surface font-medium flex items-center justify-between">
-                  <span>Backend API Base URL</span>
-                  <span className="font-code-sm text-code-sm text-on-surface-variant font-normal">Mount: /api</span>
-                </label>
+                <label className="font-label-md text-label-md text-on-surface font-medium">Gateway API Base URL</label>
                 <div className="relative flex items-center">
                   <input
-                    className="w-full pl-3 pr-10 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                    className="w-full pl-3 pr-10 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md"
                     readOnly
                     type="text"
-                    value="http://localhost:3000/api"
+                    value={gatewayBaseUrl}
                   />
                   <button
-                    className="absolute right-2 p-1 text-on-surface-variant hover:text-primary transition-colors"
+                    className="absolute right-2 p-1 text-on-surface-variant hover:text-primary"
                     onClick={() => {
-                      navigator.clipboard.writeText('http://localhost:3000/api');
-                      showToast('API URL copied to clipboard!', 'success');
+                      navigator.clipboard.writeText(gatewayBaseUrl);
+                      showToast('Gateway API URL copied!', 'success');
                     }}
                     title="Copy URL"
                   >
@@ -257,34 +258,19 @@ export const Settings: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <label className="font-label-md text-label-md text-on-surface font-medium">
-                    API Gateway / CORS Origins
-                  </label>
-                  <span className="font-code-sm text-code-sm text-secondary">Access-Control-Allow-Origin</span>
-                </div>
-                <input
-                  className="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-code-md text-code-md focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                  readOnly
-                  type="text"
-                  value="http://localhost:3000, http://127.0.0.1:8500, http://localhost:5173"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <span className="font-label-md text-label-md text-on-surface font-medium">Registered Route Handlers</span>
+                <span className="font-label-md text-label-md text-on-surface font-medium">Active Proxy Endpoints</span>
                 <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-surface-container-low">
                   <span className="px-2 py-0.5 rounded font-code-sm text-code-sm bg-surface-container-lowest text-primary">
-                    GET /api/services
+                    GET /api/dashboard/overview
                   </span>
                   <span className="px-2 py-0.5 rounded font-code-sm text-code-sm bg-surface-container-lowest text-primary">
-                    GET /api/services/:name
+                    GET /api/consul/catalog
                   </span>
                   <span className="px-2 py-0.5 rounded font-code-sm text-code-sm bg-surface-container-lowest text-primary">
-                    GET /api/health
+                    POST /api/users/:id/pay
                   </span>
                   <span className="px-2 py-0.5 rounded font-code-sm text-code-sm bg-surface-container-lowest text-primary">
-                    POST /api/services/register
+                    GET /api/telemetry
                   </span>
                 </div>
               </div>
@@ -294,23 +280,22 @@ export const Settings: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-sm pt-space-md border-t border-surface-container mt-space-md">
             <button
               disabled={apiTestLoading}
-              onClick={handleTestApi}
+              onClick={() => handleTestApi(false)}
               className="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-colors"
             >
               <span className={`material-symbols-outlined text-[16px] text-primary ${apiTestLoading ? 'animate-spin' : ''}`}>
                 terminal
               </span>
-              <span>Test Express API</span>
+              <span>Test Express Gateway</span>
             </button>
             <div className="flex items-center gap-1.5 px-space-sm py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
               <span>{apiTestStatus}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Local UI & Polling Preferences */}
+      {/* Preferences Section */}
       <section className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
         <div className="flex items-center justify-between pb-space-sm border-b border-surface-container">
           <div className="flex items-center gap-space-sm">
@@ -318,53 +303,44 @@ export const Settings: React.FC = () => {
               <span className="material-symbols-outlined text-[20px]">tune</span>
             </div>
             <div>
-              <h3 className="font-headline-md text-headline-md text-on-surface">Client Telemetry &amp; Polling Preferences</h3>
+              <h3 className="font-headline-md text-headline-md text-on-surface">UI Polling Preferences</h3>
               <p className="font-body-sm text-body-sm text-secondary">
-                Configure browser-side polling rates, telemetry log levels, and local UI rendering preferences.
+                Configure client-side polling intervals and alert behavior.
               </p>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
-          {/* Option 1: Polling */}
           <div className="flex flex-col gap-1.5 p-space-sm rounded-lg bg-surface-container-low">
             <span className="font-label-md text-label-md text-on-surface font-medium">Catalog Polling Interval</span>
             <select
-              className="w-full px-3 py-1.5 rounded bg-surface-container-lowest font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-1.5 rounded bg-surface-container-lowest font-body-sm text-body-sm text-on-surface"
               value={pollingInterval}
               onChange={(e) => setPollingInterval(e.target.value)}
             >
-              <option value="1s">1 second (High Frequency)</option>
-              <option value="5s">5 seconds (Standard Production)</option>
-              <option value="10s">10 seconds (Low Overhead)</option>
-              <option value="30s">30 seconds (Power Saver)</option>
+              <option value="5s">5 seconds</option>
+              <option value="10s">10 seconds (Default)</option>
+              <option value="30s">30 seconds</option>
             </select>
-            <span className="font-code-sm text-code-sm text-secondary">Frequency of Consul sync fetch</span>
           </div>
 
-          {/* Option 2: Log Level */}
           <div className="flex flex-col gap-1.5 p-space-sm rounded-lg bg-surface-container-low">
             <span className="font-label-md text-label-md text-on-surface font-medium">Console Log Level</span>
             <select
-              className="w-full px-3 py-1.5 rounded bg-surface-container-lowest font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-1.5 rounded bg-surface-container-lowest font-body-sm text-body-sm text-on-surface"
               value={logLevel}
               onChange={(e) => setLogLevel(e.target.value)}
             >
-              <option value="debug">DEBUG (Verbose tracing)</option>
-              <option value="info">INFO (Operational messages)</option>
-              <option value="warn">WARN (Warnings only)</option>
-              <option value="error">ERROR (Failures only)</option>
+              <option value="debug">DEBUG</option>
+              <option value="info">INFO</option>
+              <option value="warn">WARN</option>
+              <option value="error">ERROR</option>
             </select>
-            <span className="font-code-sm text-code-sm text-secondary">Client telemetry verbosity</span>
           </div>
 
-          {/* Option 3: Notifications */}
           <div className="flex flex-col justify-between p-space-sm rounded-lg bg-surface-container-low">
-            <div>
-              <span className="font-label-md text-label-md text-on-surface font-medium block">Desktop Notifications</span>
-              <span className="font-code-sm text-code-sm text-secondary">Alert on critical state transition</span>
-            </div>
+            <span className="font-label-md text-label-md text-on-surface font-medium block">Toast Alerts</span>
             <label className="flex items-center gap-2 mt-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -376,12 +352,8 @@ export const Settings: React.FC = () => {
             </label>
           </div>
 
-          {/* Option 4: Compact Rows */}
           <div className="flex flex-col justify-between p-space-sm rounded-lg bg-surface-container-low">
-            <div>
-              <span className="font-label-md text-label-md text-on-surface font-medium block">Compact Table Rows</span>
-              <span className="font-code-sm text-code-sm text-secondary">Reduce vertical table padding</span>
-            </div>
+            <span className="font-label-md text-label-md text-on-surface font-medium block">Compact Tables</span>
             <label className="flex items-center gap-2 mt-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -397,13 +369,13 @@ export const Settings: React.FC = () => {
         <div className="flex items-center justify-end gap-space-sm pt-space-xs">
           <button
             onClick={resetPreferences}
-            className="px-space-md py-2 rounded-lg bg-surface-container text-secondary hover:text-on-surface font-label-lg text-label-lg transition-colors"
+            className="px-space-md py-2 rounded-lg bg-surface-container text-secondary hover:text-on-surface font-label-lg text-label-lg"
           >
             Reset Defaults
           </button>
           <button
             onClick={savePreferences}
-            className="px-space-md py-2 rounded-lg bg-primary text-on-primary font-label-lg text-label-lg shadow-sm hover:bg-primary-container transition-colors"
+            className="px-space-md py-2 rounded-lg bg-primary text-on-primary font-label-lg text-label-lg shadow-sm hover:bg-primary-container"
           >
             Save Preferences
           </button>
@@ -412,4 +384,3 @@ export const Settings: React.FC = () => {
     </div>
   );
 };
-

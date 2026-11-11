@@ -7,8 +7,8 @@ const USER_PORT = process.env.USER_PORT || 8002;
 const SERVER_PORT = process.env.PORT || 3000;
 
 const paymentServer = paymentApp.listen(PAYMENT_PORT, () => {
-    console.log(`[Payment Service - GCP] Running at http://127.0.0.1:${PAYMENT_PORT}`);
-    console.log(`[Payment Service - GCP] Health check probe: http://127.0.0.1:${PAYMENT_PORT}/health`);
+    console.log(`[Payment Service - ${process.env.CLOUD_PROVIDER || 'AZURE'}] Running at http://127.0.0.1:${PAYMENT_PORT}`);
+    console.log(`[Payment Service - ${process.env.CLOUD_PROVIDER || 'AZURE'}] Health check probe: http://127.0.0.1:${PAYMENT_PORT}/health`);
 });
 
 const userServer = userApp.listen(USER_PORT, () => {

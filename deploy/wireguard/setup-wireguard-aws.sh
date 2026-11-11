@@ -24,7 +24,7 @@ echo "AWS EC2 Public Key: $AWS_PUB"
 echo "----------------------------------------------------"
 
 echo "[3/4] Creating /etc/wireguard/wg0.conf..."
-# Note: Replace GCP_PUBLIC_KEY and GCP_PUBLIC_IP with actual GCP values
+# Note: Replace REPLACE_WITH_AZURE_PUBLIC_KEY and REPLACE_WITH_AZURE_PUBLIC_IP with actual Azure values
 cat <<EOF | sudo tee /etc/wireguard/wg0.conf
 [Interface]
 Address = 10.8.0.1/24
@@ -32,12 +32,12 @@ ListenPort = 51820
 PrivateKey = $AWS_PRIV
 SaveConfig = false
 
-# Peer: Google Cloud Platform (GCP) Compute Engine VM
+# Peer: Microsoft Azure VM (Central India)
 [Peer]
-# Replace with GCP VM Public Key from /etc/wireguard/gcp_public.key:
-PublicKey = REPLACE_WITH_GCP_PUBLIC_KEY
-# Replace with GCP VM External Public IP:
-Endpoint = REPLACE_WITH_GCP_PUBLIC_IP:51820
+# Replace with Azure VM Public Key from /etc/wireguard/azure_public.key:
+PublicKey = REPLACE_WITH_AZURE_PUBLIC_KEY
+# Replace with Azure VM Public IPv4 Address:
+Endpoint = REPLACE_WITH_AZURE_PUBLIC_IP:51820
 AllowedIPs = 10.8.0.2/32
 PersistentKeepalive = 25
 EOF

@@ -1,6 +1,8 @@
 node_modules/
 .env
 .env.*
+!.env.example
+!frontend/.env.example
 *.log
 .DS_Store
 Thumbs.db
@@ -9,3 +11,8 @@ consul.zip
 consul_data/
 frontend/node_modules/
 frontend/dist/
+*.pem
+*.key
+*.ppk
+wg*.conf
+secrets/

@@ -315,5 +315,64 @@ describe('Cross-Cloud Service Discovery Registry Test Suite', () => {
     });
   });
 
+  describe('Task 6: Live Dashboard Overview, Consul Catalog & Gateway Proxies', () => {
+
+    it('GET /api/dashboard/overview should return live AWS, Azure, Consul, WireGuard and telemetry state', async () => {
+      const res = await fetch(`${API_BASE}/api/dashboard/overview`);
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.status, 'success');
+      assert.ok(data.consul);
+      assert.ok(data.awsUserService);
+      assert.ok(data.azurePaymentService);
+      assert.ok(data.wireguard);
+      assert.ok(data.telemetry);
+    });
+
+    it('GET /api/consul/catalog should return cataloged services and health statuses', async () => {
+      const res = await fetch(`${API_BASE}/api/consul/catalog`);
+      assert.ok([200, 503].includes(res.status));
+      const data = await res.json();
+      if (res.status === 200) {
+        assert.equal(data.status, 'success');
+        assert.ok(Array.isArray(data.instances));
+      }
+    });
+
+    it('GET /api/consul/health/payment-service should inspect passing vs all instances', async () => {
+      const res = await fetch(`${API_BASE}/api/consul/health/payment-service`);
+      assert.ok([200, 503].includes(res.status));
+      const data = await res.json();
+      assert.equal(data.serviceName, 'payment-service');
+      assert.ok(['PASSING', 'CRITICAL', 'WARNING', 'UNKNOWN'].includes(data.healthState));
+    });
+
+    it('POST /api/users/:id/pay via Gateway should discover payment-service and return full response', async () => {
+      const res = await fetch(`${API_BASE}/api/users/usr_101/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 10, currency: 'USD', description: 'Dashboard demo payment' })
+      });
+      assert.ok([200, 503].includes(res.status));
+      const data = await res.json();
+      if (res.status === 200) {
+        assert.equal(data.status, 'success');
+        assert.equal(data.source.cloud, 'AWS');
+        assert.equal(data.payment.description, 'Dashboard demo payment');
+        assert.ok(data.discoveredTarget.instanceId);
+        assert.ok(data.payment.transactionId);
+      }
+    });
+
+    it('GET /api/telemetry should return storage note and live telemetry counters', async () => {
+      const res = await fetch(`${API_BASE}/api/telemetry`);
+      assert.ok([200, 503].includes(res.status));
+      const data = await res.json();
+      assert.equal(data.persistence, 'in-memory');
+      assert.ok(data.storageNote);
+      assert.ok(data.telemetry);
+    });
+  });
+
 });
 

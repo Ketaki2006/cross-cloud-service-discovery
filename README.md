@@ -1,38 +1,43 @@
 # Cross-Cloud Service Discovery Registry
 
-A lightweight, enterprise-grade **Cross-Cloud Service Discovery Registry** built with a modern **React + TypeScript** frontend and a robust **Node.js / Express** backend integrating with **HashiCorp Consul**.
+A production-verified **Cross-Cloud Service Discovery Registry** built with a **React + TypeScript** frontend, a **Node.js / Express 5** API Gateway, **HashiCorp Consul** service registry, and live microservices deployed across **AWS EC2 (`us-east-1`)** and **Microsoft Azure (`Central India`)** connected via an encrypted **WireGuard VPN tunnel**.
 
-This system demonstrates dynamic microservice registration, health probing, multi-cloud catalog aggregation, and resilient service discovery across simulated AWS, GCP, and Azure topologies.
-
-> **Note on Scope:** This project is a **local simulation** using a local HashiCorp Consul agent and local mock microservices. Real AWS, GCP, and Azure cloud infrastructure is **not provisioned**; instead, provider metadata and failover policies are modeled to simulate cross-cloud multi-region topologies.
+> **Note on Scope & Limitations:**
+> - **Cross-Cloud Networking & Discovery:** Real distributed microservices running on separate AWS EC2 and Azure VMs communicating privately over WireGuard (`10.8.0.1 <-> 10.8.0.2`, UDP `51820`) via dynamic HashiCorp Consul discovery (`aws-us-east-1`).
+> - **Simulated Payments:** Transaction processing is simulated (`POST /api/payments/process`); no real banking gateways or financial accounts are connected.
+> - **In-Memory Telemetry:** Transaction counters and recent history are held in memory inside the AWS User Service (`user-service.js`) and reset if the service process restarts.
 
 ---
 
 ## Architecture Overview
 
 ```mermaid
-graph TD
-    Client[Browser / User] -->|React Router UI :3000 or :5173| Frontend[React + TypeScript SPA - Vite + Tailwind]
-    Frontend -->|REST HTTP API :3000| Backend[Express Backend Gateway - server.js]
-    Backend -->|Raft / Catalog API :8500| Consul[HashiCorp Consul Agent -dev]
-    Consul -->|Periodic Health Probes :8001/health| PaymentSvc[Simulated Payment Service - payment-service.js]
-    Consul -->|DNS SRV Resolution :8600| DNSClient[Consul DNS Layer]
+flowchart LR
+    User[Browser / Operator] -->|HTTPS or HTTP :3000| Gateway[Express Gateway + React SPA<br/>AWS EC2]
+    Gateway -->|Shielded Loopback :8500| Consul[HashiCorp Consul Server<br/>Datacenter: aws-us-east-1]
+    Gateway -->|POST /api/users/:id/pay| UserSvc[AWS User Service :8002<br/>10.8.0.1]
+    UserSvc -->|1. Query ?passing=true| Consul
+    Consul -->|2. Returns 10.8.0.2:8001| UserSvc
+    UserSvc -->|3. WireGuard UDP :51820<br/>http://10.8.0.2:8001/api/payments/process| PaySvc[Azure Payment Service :8001<br/>10.8.0.2 / Central India]
+    Consul -->|4. Active Health Probe every 10s<br/>http://10.8.0.2:8001/health| PaySvc
 ```
 
-### Component Roles & Ports
-- **React Frontend SPA**:
-  - Production (served by Express): `http://localhost:3000`
-  - Development (Vite Dev Server): `http://localhost:5173`
-- **Express Backend API**: `http://localhost:3000` (Gateway for registration, discovery, health aggregation)
-- **HashiCorp Consul Daemon**: `http://localhost:8500` (Consul Web UI at `/ui/`, Raft RPC at `8300`, DNS at `8600`)
-- **Simulated Payment Service**: `http://127.0.0.1:8001/health` (Mock microservice returning live JSON telemetry)
+### Verified Cloud Topology
+
+| Component | Cloud / Location | Private / VPN IP | Port | Management |
+| :--- | :--- | :--- | :--- | :--- |
+| **Express Gateway + React SPA** | AWS EC2 (`us-east-1`) | `172.31.20.133` / `10.8.0.1` | `3000` | `systemd` (`crosscloud-gateway`) |
+| **AWS User Service** | AWS EC2 (`us-east-1`) | `10.8.0.1` | `8002` | `systemd` (`user-service`) |
+| **HashiCorp Consul Server** | AWS EC2 (`us-east-1`) | `127.0.0.1` (shielded) | `8500` | `systemd` (`consul`) |
+| **Azure Payment Service** | Azure VM (`Central India`) | `172.16.0.4` / `10.8.0.2` | `8001` | `systemd` (`payment-service`) |
+| **WireGuard VPN Overlay** | AWS ↔ Azure | `10.8.0.1` ↔ `10.8.0.2` | `51820/UDP` | `systemd` (`wg-quick@wg0`) |
 
 ### Core Frontend Pages (React + TypeScript)
-- **Dashboard (`/`)** — Real-time overview of total services, healthy/unhealthy breakdown, multi-cloud provider stats, live Consul Serf gossip stream, and registration modal.
-- **Service Registry (`/service-registry`)** — Interactive registration form for new services, filterable catalog table with live Consul status badges, JSON export, and node inspection.
-- **Service Discovery (`/service-discovery`)** — Dynamic discovery query engine, DNS SRV record generator, healthy instance resolution, and client snippet preview.
-- **Health Monitoring (`/health-monitoring`)** — Aggregated health check metrics, SLA progress bar, per-service probe telemetry inspector, and manual ping triggers.
-- **Settings (`/settings`)** — Live connection diagnostic tests for Consul (`:8500`) and Express (`:3000`), CORS configuration, and local polling preferences.
+- **Overview Dashboard (`/`)** — Live health states (`PASSING`, `CRITICAL`, `UNKNOWN`) for AWS User Service, Azure Payment Service, Consul, and WireGuard VPN; AWS-to-Azure communication diagram; functional Payment Simulator; and live transaction telemetry table.
+- **Service Registry (`/service-registry`)** — Live Consul catalog table (`GET /v1/catalog/services` + `/v1/health/service/:name`), tags (`AZURE`, `central-india`), last check output, live backend probing, registration form, and deregistration.
+- **Service Discovery (`/service-discovery`)** — Dynamic service resolution with `?passing=true` filtering, exclusion status check for `payment-service`, DNS SRV preview, and client snippets.
+- **Health Monitoring (`/health-monitoring`)** — Aggregated Consul health check monitoring, critical exclusion alerts, manual HTTP probes, and fault-injection/recovery controls.
+- **Settings (`/settings`)** — Live diagnostics for Consul datacenter (`aws-us-east-1`), WireGuard tunnel state, Express Gateway API, and UI preferences.
 
 ---
 
@@ -40,152 +45,89 @@ graph TD
 
 ```text
 cross-cloud-service-discovery/
-├── frontend/                     # React + TypeScript Frontend
+├── frontend/                     # React 18 + TypeScript + Vite SPA
 │   ├── src/
-│   │   ├── components/           # Reusable UI components (Header, Sidebar, Toast, Modals)
-│   │   ├── pages/                # Core routed pages (Dashboard, Registry, Discovery, Health, Settings)
-│   │   ├── services/             # API client functions (Consul & Express endpoints)
-│   │   ├── types/                # TypeScript interfaces and types
-│   │   ├── App.tsx               # Main React component with React Router
-│   │   ├── main.tsx              # React DOM entry point
-│   │   └── index.css             # Tailwind base & layout styles
-│   ├── index.html                # Vite HTML template with Inter & Material Symbols fonts
-│   ├── package.json              # Frontend dependencies (React 18, React Router, Vite, Tailwind)
-│   ├── tsconfig.json             # TypeScript compiler configuration
-│   ├── vite.config.ts            # Vite config with /api reverse proxy
-│   └── tailwind.config.js        # Pixel-perfect Material Design tokens matching original theme
-├── server.js                     # Express backend API & static production server
-├── payment-service.js            # Mock Payment microservice with live health probes
-├── start-all.js                  # Unified server startup script
-├── package.json                  # Root backend scripts and dependencies
-├── consul.exe                    # HashiCorp Consul binary (Windows 64-bit)
-└── test/
-    └── backend.test.js           # Automated test suite (18 unit/integration tests)
+│   │   ├── components/           # Header, Sidebar (responsive mobile drawer), Toast, RegisterServiceModal
+│   │   ├── pages/                # Dashboard, ServiceRegistry, ServiceDiscovery, HealthMonitoring, Settings
+│   │   ├── services/             # Typed API client using VITE_API_BASE_URL
+│   │   ├── types/                # TypeScript contracts
+│   │   └── vite-env.d.ts         # Vite environment typing
+│   ├── .env.example              # Frontend environment template
+│   └── package.json
+├── deploy/                       # Cloud & WireGuard provisioning scripts
+│   ├── aws/                      # AWS User Service & Express Gateway setup scripts
+│   ├── azure/                    # Azure Payment Service setup script
+│   ├── consul/                   # Consul server HCL configuration
+│   ├── wireguard/                # WireGuard peer tunnel scripts
+│   └── README_DEPLOYMENT.md      # Complete AWS + Azure deployment runbook
+├── documentation/                # Architecture guides, Viva Q&A & Demo Presentation Guide
+├── test/
+│   └── backend.test.js           # 28 automated integration tests (node:test)
+├── server.js                     # Express 5 API Gateway & static React SPA host
+├── user-service.js               # AWS User Service (dynamic Consul discovery & payment client)
+├── payment-service.js            # Azure Payment Service (transaction processor & /health probe)
+├── start-all.js                  # Local unified launcher (Gateway + User + Payment)
+├── .env.example                  # Backend environment template
+└── package.json                  # Root Node.js manifest
 ```
 
 ---
 
-## Step-by-Step Setup & Execution Guide
+## API Endpoints Reference
 
-### 1. Prerequisites
-Ensure you have installed:
-- **Node.js** (v18, v20, or v24 LTS): Verify with `node -v`
-- **HashiCorp Consul** binary for Windows: Verify with `consul -v` or use the included `.\consul.exe`
+### Express Gateway (`server.js` — Port `3000`)
+- `GET /api` — Gateway overview and metadata
+- `GET /api/dashboard/overview` — Live aggregated status (AWS User Service, Azure Payment Service, Consul, WireGuard, telemetry)
+- `GET /api/consul/status` — Consul leader, datacenter, node name, and connection state
+- `GET /api/consul/catalog` — Full Consul catalog (`GET /v1/catalog/services` + `/v1/health/service/:name`)
+- `GET /api/consul/health/payment-service` — Compares registered vs `?passing` healthy discovery instances
+- `GET /api/services` — List agent-registered services
+- `POST /api/services/register` — Validate & register a service with Consul (detects duplicate IDs with `409 Conflict`)
+- `DELETE /api/services/:id` — Deregister a service instance
+- `GET /api/services/:name` — Discover service instances (`?passing=true` supported)
+- `POST /api/services/probe` — Trigger a live backend HTTP GET probe for a registered service
+- `GET /api/health` — Aggregated Consul health check summary
+- `GET /api/users` — Proxy to AWS User Service users list
+- `POST /api/users/:id/pay` — Proxy cross-cloud payment trigger to AWS User Service
+- `GET /api/telemetry` — Proxy live in-memory telemetry from AWS User Service
+- `POST /api/scenarios/inject-fault` & `/restore-health` — Trigger simulated HTTP 503 failure / 200 recovery on Payment Service (resolved via Consul)
 
-### 2. Install Dependencies
-Install dependencies for both root and frontend:
+### AWS User Service (`user-service.js` — Port `8002`)
+- `GET /health` — Service health probe
+- `GET /api/users` / `GET /api/users/:id` — Mock user accounts
+- `POST /api/users/:id/pay` — Queries Consul `?passing=true`, discovers Payment Service IP:Port, and dispatches cross-cloud payment
+- `GET /api/telemetry` — Returns in-memory cross-cloud request counters and history
+
+### Azure Payment Service (`payment-service.js` — Port `8001`)
+- `GET /health` — Health probe returning HTTP `200` (healthy) or `503` (unhealthy)
+- `POST /api/payments/process` — Validates and processes simulated payment transaction
+- `POST /simulate/unhealthy` / `POST /simulate/healthy` — Toggles simulated health status for fault-tolerance demonstrations
+
+---
+
+## Running Locally (Development / Fallback Mode)
+
 ```powershell
-# Root dependencies
+# 1. Install dependencies & build frontend
 npm install
-
-# Frontend React dependencies
 npm --prefix frontend install
-```
+npm --prefix frontend run build
 
-### 3. Start HashiCorp Consul Agent
-In a dedicated PowerShell terminal, run:
-```powershell
-.\consul.exe agent -dev
-# or: consul agent -dev (if added to system PATH)
-```
-Verify the Consul web UI is accessible at:
-👉 **[http://localhost:8500/ui/](http://localhost:8500/ui/)**
-
-### 4. Build and Run the Complete Application
-
-#### Option A: Unified Full-Stack Run (Recommended)
-Build the React frontend and run both backend servers:
-```powershell
-# Build React frontend
-npm run frontend:build
-
-# Start Payment Service (:8001) + Express & React UI (:3000)
-npm run start:all
-```
-Open your browser at:
-👉 **[http://localhost:3000](http://localhost:3000)**
-
-#### Option B: Vite Frontend Dev Server (Hot-Reloading)
-For active frontend development with fast hot module replacement:
-```powershell
-# Terminal 1: Start Consul
+# 2. Terminal 1: Start local Consul agent
 .\consul.exe agent -dev
 
-# Terminal 2: Start Backend Services
-npm run start:all
-
-# Terminal 3: Start Vite Dev Server
-npm run frontend:dev
+# 3. Terminal 2: Start Payment (:8001), User (:8002), and Gateway (:3000)
+node start-all.js
 ```
-Open your browser at:
-👉 **[http://localhost:5173](http://localhost:5173)** *(Vite automatically proxies `/api` calls to `:3000`)*
+
+Visit **[http://localhost:3000](http://localhost:3000)**.
 
 ---
 
-## Demonstration Workflows
+## Automated Testing
 
-### 1. Registering a Service
-1. Navigate to **Service Registry** (`/service-registry`).
-2. Fill out the registration form:
-   - **Service Name**: `payment-service`
-   - **Instance ID**: `payment-01`
-   - **Cloud Provider**: `AWS` (or `GCP` / `Azure`)
-   - **IP Address**: `127.0.0.1`
-   - **Port**: `8001`
-   - **Health Check Path**: `/health`
-   - **Interval / Timeout**: `10s / 2s`
-3. Click **"Register Service to Consul"**.
-4. The service will register with the local Consul agent and appear in the catalog table with a **`LIVE CONSUL`** badge.
-5. In the Consul UI ([http://localhost:8500/ui/](http://localhost:8500/ui/)), you will see `payment-service` with passing health checks.
-
-### 2. Dynamic Service Discovery
-1. Navigate to **Service Discovery** (`/service-discovery`).
-2. Enter `Payment Service` or click a quick resolver button.
-3. Click **"Discover Service"**.
-4. The system queries the Consul catalog via `GET /api/services/payment-service`, displaying:
-   - Discovered instance IP:Port (`127.0.0.1:8001`)
-   - Health status (Passing / 200 OK)
-   - Dynamic DNS SRV record: `_payment-service._tcp.service.consul. 300 IN SRV 1 1 8001 ...`
-
-### 3. Real-Time Health Monitoring
-1. Navigate to **Health Monitoring** (`/health-monitoring`).
-2. View passing, warning, and critical counts dynamically computed from live Consul check telemetry (`GET /api/health`).
-3. Click any row in the table to inspect diagnostic output, check IDs, and latency details in the interactive terminal panel.
-4. Click **"Trigger All Probes"** to re-poll all cluster nodes.
-
----
-
-## Automated Test Suite
-
-Run the 18 automated backend tests to verify input validation, HTTP status codes, Consul catalog integration, and payment service health:
-```powershell
+Run the integration test suite (requires Gateway, User Service, Payment Service, and Consul running):
+```bash
 npm test
 ```
-
-### Verified Test Cases (18/18 Passing):
-- **Express Backend Core API**:
-  - `GET /api` metadata and endpoint listing
-  - `POST /api/services/register` required validation (`name`, `id`, `address`, `port`, `checkPath`)
-  - Valid port integer checking (1–65535)
-  - `DELETE /api/services/:id` parameter validation
-- **Simulated Payment Service**:
-  - `GET /` simulation metadata check
-  - `GET /health` JSON structure and `httpListener` status check
-- **Consul Catalog & Discovery Integration**:
-  - `GET /api/consul/status` connection check
-  - `GET /api/services` catalog listing
-  - `GET /api/services/:name` passing instance discovery
-  - Unregistered service empty-state handling
-  - `GET /api/health` summary metric calculation
-- **Conflict Detection**:
-  - Duplicate service ID rejection with HTTP 409 Conflict
-- **Experimental Scenarios**:
-  - Simulated 503 fault injection and recovery
-
----
-
-## Technology Stack Summary
-- **Frontend**: React 18, TypeScript, React Router DOM (v6), Vite 5, Tailwind CSS
-- **Backend API**: Node.js, Express 5.x, Axios, CORS
-- **Service Mesh & Catalog**: HashiCorp Consul (Local Development Agent)
-- **Testing**: Node.js built-in Test Runner (`node:test`, `node:assert/strict`)
+All **28 integration tests across 8 suites** verify input validation, duplicate detection (`409`), Consul registration/discovery, real payment routing (`POST /api/users/usr_101/pay`), telemetry counters, fault injection, and recovery.

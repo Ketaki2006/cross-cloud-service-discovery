@@ -5,6 +5,7 @@ const axios = require("axios");
 const app = express();
 const PORT = process.env.USER_PORT || 8002;
 const CLOUD_PROVIDER = process.env.CLOUD_PROVIDER || "AWS";
+const CLOUD_REGION = process.env.CLOUD_REGION || "us-east-1";
 const CONSUL_URL = process.env.CONSUL_URL || "http://localhost:8500";
 const TARGET_SERVICE_NAME = process.env.TARGET_SERVICE_NAME || "payment-service";
 const AXIOS_TIMEOUT = Number(process.env.AXIOS_TIMEOUT) || 4000;
@@ -39,7 +40,8 @@ app.get("/", (req, res) => {
     res.json({
         service: "user-service",
         cloud: CLOUD_PROVIDER,
-        port: PORT,
+        region: CLOUD_REGION,
+        port: Number(PORT),
         consulUrl: CONSUL_URL,
         targetPaymentService: TARGET_SERVICE_NAME,
         status: "RUNNING",
@@ -60,7 +62,8 @@ app.get("/health", (req, res) => {
         status: "healthy",
         service: "user-service",
         cloud: CLOUD_PROVIDER,
-        port: PORT,
+        region: CLOUD_REGION,
+        port: Number(PORT),
         uptimeSeconds: Math.floor(process.uptime()),
         timestamp: new Date().toISOString(),
         checks: {
@@ -174,7 +177,7 @@ app.post("/api/users/:id/pay", async (req, res) => {
     const targetHost = targetService.Address || targetNode.Address || "127.0.0.1";
     const targetPort = targetService.Port;
     const targetTags = targetService.Tags || [];
-    const targetCloud = targetTags.find(t => ["GCP", "AWS", "Azure", "Local"].includes(t)) || "GCP";
+    const matchedCloudTag = targetTags.find(t => ["AWS", "AZURE", "GCP", "HYBRID", "LOCAL"].includes(String(t).toUpperCase()));
     const targetInstanceId = targetService.ID || "unknown";
 
     if (!targetPort) {
@@ -194,11 +197,12 @@ app.post("/api/users/:id/pay", async (req, res) => {
             userId,
             amount: numAmount,
             currency: currency || "USD",
-            description: description || `Cross-cloud transfer from AWS User Service for ${user.name}`
+            description: description || "Dashboard demo payment"
         };
 
         const paymentRes = await axios.post(paymentUrl, paymentPayload, { timeout: AXIOS_TIMEOUT });
         const latencyMs = Date.now() - startTime;
+        const targetCloud = (matchedCloudTag || paymentRes.data?.cloud || "AZURE").toUpperCase();
 
         telemetry.successful++;
         const record = {
@@ -206,8 +210,11 @@ app.post("/api/users/:id/pay", async (req, res) => {
             status: "SUCCESS",
             userId,
             amount: numAmount,
+            currency: currency || "USD",
+            description: paymentPayload.description,
             sourceCloud: CLOUD_PROVIDER,
             targetCloud,
+            discoveredServiceId: targetInstanceId,
             targetAddress: `${targetHost}:${targetPort}`,
             transactionId: paymentRes.data.transactionId,
             latencyMs
@@ -224,7 +231,8 @@ app.post("/api/users/:id/pay", async (req, res) => {
             source: {
                 service: "user-service",
                 cloud: CLOUD_PROVIDER,
-                port: PORT,
+                region: CLOUD_REGION,
+                port: Number(PORT),
                 user: { id: user.id, name: user.name }
             },
             discoveredTarget: {
@@ -243,6 +251,7 @@ app.post("/api/users/:id/pay", async (req, res) => {
     } catch (paymentErr) {
         const latencyMs = Date.now() - startTime;
         telemetry.failed++;
+        const targetCloud = (matchedCloudTag || "AZURE").toUpperCase();
         const errMsg = paymentErr.response?.data?.message || paymentErr.message;
         const errStatus = paymentErr.response?.status || 502;
 
@@ -251,8 +260,11 @@ app.post("/api/users/:id/pay", async (req, res) => {
             status: "FAILED_PAYMENT_ERROR",
             userId,
             amount: numAmount,
+            currency: currency || "USD",
+            description: description || "Dashboard demo payment",
             sourceCloud: CLOUD_PROVIDER,
             targetCloud,
+            discoveredServiceId: targetInstanceId,
             targetAddress: `${targetHost}:${targetPort}`,
             latencyMs,
             error: errMsg
@@ -268,6 +280,7 @@ app.post("/api/users/:id/pay", async (req, res) => {
             code: "CROSS_CLOUD_COMMUNICATION_FAILED",
             sourceCloud: CLOUD_PROVIDER,
             targetCloud,
+            discoveredServiceId: targetInstanceId,
             discoveredAddress: `${targetHost}:${targetPort}`,
             latencyMs,
             message: `Discovered Payment Service at ${targetHost}:${targetPort}, but payment execution failed: ${errMsg}`,
@@ -282,6 +295,9 @@ app.get("/api/telemetry", (req, res) => {
         status: "success",
         service: "user-service",
         cloud: CLOUD_PROVIDER,
+        region: CLOUD_REGION,
+        persistence: "in-memory",
+        storageNote: "Telemetry is stored in memory inside the AWS User Service process and resets if the service restarts.",
         telemetry: {
             totalRequests: telemetry.total,
             successfulRequests: telemetry.successful,
@@ -312,3 +328,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+

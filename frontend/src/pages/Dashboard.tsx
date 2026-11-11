@@ -1,657 +1,760 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  getServices,
-  getHealthChecks,
-  getConsulStatus,
+  getDashboardOverview,
+  getConsulCatalog,
+  getUsers,
+  payAsUser,
   deregisterService,
-  triggerCrossCloudPayment,
-  getCrossCloudTelemetry
+  probeServiceHealth,
+  getApiBaseUrl,
 } from '../services/api';
-import { ServiceRecord, CrossCloudPaymentResult, CrossCloudTelemetry } from '../types';
+import {
+  DashboardOverviewResponse,
+  ConsulCatalogEntry,
+  CrossCloudPaymentResult,
+  UserRecord,
+  HealthState,
+} from '../types';
 import { useToast } from '../components/Toast';
 import { RegisterServiceModal } from '../components/RegisterServiceModal';
 
-const DEMO_OVERVIEW_SERVICES: ServiceRecord[] = [
-  {
-    id: 'user-01',
-    name: 'User Service',
-    provider: 'AWS',
-    address: '10.0.1.10',
-    port: 8001,
-    status: 'passing',
-    isSample: true,
-  },
-  {
-    id: 'order-01',
-    name: 'Order Service',
-    provider: 'Azure',
-    address: '10.0.1.30',
-    port: 8003,
-    status: 'critical',
-    isSample: true,
-  },
-];
+function getHealthBadgeStyle(status: HealthState | string) {
+  switch (status) {
+    case 'PASSING':
+    case 'CONNECTED':
+      return {
+        bg: 'bg-tertiary-fixed',
+        text: 'text-on-tertiary-fixed-variant',
+        dot: 'bg-tertiary',
+      };
+    case 'CRITICAL':
+    case 'UNAVAILABLE':
+    case 'DEGRADED':
+      return {
+        bg: 'bg-error-container',
+        text: 'text-on-error-container',
+        dot: 'bg-error',
+      };
+    case 'WARNING':
+    case 'LOCAL_DIRECT':
+      return {
+        bg: 'bg-secondary-container',
+        text: 'text-on-secondary-container',
+        dot: 'bg-primary',
+      };
+    default:
+      return {
+        bg: 'bg-surface-container',
+        text: 'text-secondary',
+        dot: 'bg-outline',
+      };
+  }
+}
 
 export const Dashboard: React.FC = () => {
   const { showToast } = useToast();
-  const [services, setServices] = useState<ServiceRecord[]>([]);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'aws' | 'gcp' | 'azure'>('all');
+
+  // Live API states (no hardcoded healthy defaults)
+  const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [catalogEntries, setCatalogEntries] = useState<ConsulCatalogEntry[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'aws' | 'azure' | 'gcp'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [telemetry, setTelemetry] = useState<CrossCloudTelemetry | null>(null);
-  const [isExecutingCrossCloud, setIsExecutingCrossCloud] = useState(false);
-  const [crossCloudResult, setCrossCloudResult] = useState<CrossCloudPaymentResult | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState('150');
 
-  const handleTriggerCrossCloud = async () => {
-    setIsExecutingCrossCloud(true);
-    try {
-      const res = await triggerCrossCloudPayment('usr_101', Number(paymentAmount) || 100);
-      setCrossCloudResult(res);
-      showToast(`Cross-Cloud Success: AWS User Service -> GCP Payment Service (${res.latencyMs}ms)`, 'success');
-      const updatedTelem = await getCrossCloudTelemetry().catch(() => null);
-      if (updatedTelem) setTelemetry(updatedTelem);
-    } catch (err: any) {
-      showToast(`Cross-Cloud Call Failed: ${err.message}`, 'error');
-      const updatedTelem = await getCrossCloudTelemetry().catch(() => null);
-      if (updatedTelem) setTelemetry(updatedTelem);
-    } finally {
-      setIsExecutingCrossCloud(false);
-    }
-  };
+  // Payment Simulator state
+  const [selectedUserId, setSelectedUserId] = useState('usr_101');
+  const [paymentAmount, setPaymentAmount] = useState('10');
+  const [paymentCurrency, setPaymentCurrency] = useState('USD');
+  const [paymentDescription, setPaymentDescription] = useState('Dashboard demo payment');
+  const [isPaying, setIsPaying] = useState(false);
+  const [lastPaymentResult, setLastPaymentResult] = useState<CrossCloudPaymentResult | null>(null);
+  const [lastPaymentError, setLastPaymentError] = useState<string | null>(null);
 
-  const fetchOverviewData = useCallback(async () => {
+  const fetchAllData = useCallback(async () => {
     try {
-      const [servicesRes, healthRes] = await Promise.all([
-        getServices().catch(() => null),
-        getHealthChecks().catch(() => null),
+      const [overviewData, catalogData, usersData] = await Promise.all([
+        getDashboardOverview(),
+        getConsulCatalog().catch(() => null),
+        getUsers().catch(() => null),
       ]);
-
-      const checksMap: Record<string, 'passing' | 'critical' | 'warning'> = {};
-      if (healthRes && healthRes.checks) {
-        healthRes.checks.forEach((c) => {
-          if (c.ServiceID) checksMap[c.ServiceID] = c.Status;
-        });
+      setOverview(overviewData);
+      setOverviewError(null);
+      if (catalogData && catalogData.instances) {
+        setCatalogEntries(catalogData.instances);
+      } else {
+        setCatalogEntries([]);
       }
-
-      let liveList: ServiceRecord[] = [];
-      if (servicesRes && servicesRes.services) {
-        liveList = Object.entries(servicesRes.services).map(([key, s]) => {
-          const tags: string[] = s.Tags || [];
-          const provider = tags.find((t) => ['AWS', 'GCP', 'Azure', 'Hybrid', 'Local'].includes(t)) || 'Local';
-          const healthStatus = checksMap[s.ID] || 'passing';
-
-          const formatTitle = (str: string) => {
-            if (!str) return 'Service';
-            return str
-              .split('-')
-              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-              .join(' ');
-          };
-
-          return {
-            id: s.ID || key,
-            name: formatTitle(s.Service || key),
-            serviceName: s.Service || key,
-            provider,
-            address: s.Address || '127.0.0.1',
-            port: s.Port || 80,
-            status: healthStatus,
-            isSample: false,
-          };
-        });
+      if (usersData && Array.isArray(usersData.users) && usersData.users.length > 0) {
+        setUsers(usersData.users);
       }
-
-      const merged = [...liveList];
-      for (const sample of DEMO_OVERVIEW_SERVICES) {
-        if (!merged.some((m) => m.id === sample.id || m.name.toLowerCase() === sample.name.toLowerCase())) {
-          merged.push(sample);
-        }
-      }
-
-      setServices(merged);
-      getCrossCloudTelemetry().then(setTelemetry).catch(() => null);
-    } catch (err) {
-      console.error('Error fetching overview data:', err);
-      setServices([...DEMO_OVERVIEW_SERVICES]);
+    } catch (err: any) {
+      setOverviewError(err.message || 'Unable to reach Express Backend API');
     }
   }, []);
 
   useEffect(() => {
-    fetchOverviewData();
-    const interval = setInterval(fetchOverviewData, 8000);
-    return () => clearInterval(interval);
-  }, [fetchOverviewData]);
+    fetchAllData();
+    const timer = setInterval(fetchAllData, 10000);
+    return () => clearInterval(timer);
+  }, [fetchAllData]);
 
   const handleSyncMesh = async () => {
     setIsSyncing(true);
-    try {
-      const data = await getConsulStatus();
-      if (data.connected) {
-        showToast(`Consul Mesh Connected • Leader: ${data.leader} (DC: dc1)`, 'success');
-      } else {
-        showToast('Consul daemon is offline. Run: consul agent -dev', 'error');
-      }
-    } catch (err: any) {
-      showToast(`Mesh sync error: ${err.message}`, 'error');
+    await fetchAllData();
+    showToast('Dashboard synchronized with Consul and User Service APIs.', 'info');
+    setTimeout(() => setIsSyncing(false), 500);
+  };
+
+  const handleExecutePayment = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const numericAmount = Number(paymentAmount);
+    if (!numericAmount || numericAmount <= 0) {
+      showToast('Enter a valid positive payment amount.', 'error');
+      return;
     }
-    await fetchOverviewData();
-    setTimeout(() => setIsSyncing(false), 700);
+
+    setIsPaying(true);
+    setLastPaymentError(null);
+
+    try {
+      const res = await payAsUser(selectedUserId, {
+        amount: numericAmount,
+        currency: paymentCurrency,
+        description: paymentDescription.trim() || 'Dashboard demo payment',
+      });
+      setLastPaymentResult(res);
+      showToast(
+        `Payment ${res.payment.transactionId} completed via ${res.discoveredTarget.address}:${res.discoveredTarget.port} (${res.latencyMs}ms)`,
+        'success'
+      );
+      await fetchAllData();
+    } catch (err: any) {
+      const msg = err.message || 'Cross-cloud payment request failed';
+      setLastPaymentError(msg);
+      showToast(msg, 'error');
+      await fetchAllData();
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const handleDeregister = async (serviceId: string) => {
-    if (!window.confirm(`Are you sure you want to deregister "${serviceId}" from Consul?`)) return;
-
+    if (!window.confirm(`Deregister "${serviceId}" from Consul catalog?`)) return;
     try {
       await deregisterService(serviceId);
-      showToast(`Service "${serviceId}" deregistered from Consul catalog successfully.`, 'success');
-      await fetchOverviewData();
+      showToast(`Service "${serviceId}" deregistered from Consul.`, 'success');
+      await fetchAllData();
     } catch (err: any) {
       showToast(`Deregistration failed: ${err.message}`, 'error');
     }
   };
 
-  const handleDnsQuery = (fqdn: string, target: string) => {
-    showToast(`Consul DNS: Resolved ${fqdn} -> ${target} (RFC-2782)`, 'info');
+  const handleLiveProbe = async (serviceId: string) => {
+    showToast(`Executing backend HTTP probe for "${serviceId}"...`, 'info');
+    try {
+      const res = await probeServiceHealth(serviceId);
+      if (res.status === 'PASSING') {
+        showToast(`Probe PASSING: ${res.targetUrl} -> HTTP ${res.httpStatus} (${res.latencyMs}ms)`, 'success');
+      } else {
+        showToast(`Probe CRITICAL: ${res.targetUrl} -> ${res.error || `HTTP ${res.httpStatus}`}`, 'error');
+      }
+      await fetchAllData();
+    } catch (err: any) {
+      showToast(`Probe error: ${err.message}`, 'error');
+    }
   };
 
-  const handleInspect = (serviceId: string) => {
-    showToast(`Viewing Consul catalog record for service ID: ${serviceId}`, 'info');
-  };
-
-  const copySnippet = () => {
-    const text = 'curl -X GET http://localhost:3000/api/services';
-    navigator.clipboard.writeText(text).then(() => {
-      showToast('cURL command copied to clipboard!', 'success');
+  const copyApiCurl = () => {
+    const baseUrl = getApiBaseUrl();
+    const cmd = `curl -X POST ${baseUrl}/api/users/${selectedUserId}/pay -H "Content-Type: application/json" -d '{"amount":10,"currency":"USD","description":"Dashboard demo payment"}'`;
+    navigator.clipboard.writeText(cmd).then(() => {
+      showToast('Cross-cloud payment cURL copied to clipboard!', 'success');
     });
   };
 
-  const total = services.length;
-  const passing = services.filter((s) => s.status === 'passing' || s.status === 'Healthy').length;
-  const critical = services.filter((s) => s.status === 'critical' || s.status === 'warning' || s.status === 'Unhealthy').length;
+  // Extracted safe status values (never assuming healthy!)
+  const awsStatus: HealthState = overview?.awsUserService?.status || 'UNKNOWN';
+  const azureStatus: HealthState = overview?.azurePaymentService?.status || 'UNKNOWN';
+  const consulStatus = overview?.consul?.connected ? 'PASSING' : overview ? 'UNAVAILABLE' : 'UNKNOWN';
+  const wgStatus = overview?.wireguard?.status || 'UNKNOWN';
 
-  const filteredServices = services.filter((s) => {
+  const totalReq = overview?.telemetry?.totalRequests;
+  const successReq = overview?.telemetry?.successfulRequests;
+  const failedReq = overview?.telemetry?.failedRequests;
+  const latestLatency = overview?.telemetry?.lastRequest?.latencyMs;
+  const recentHistory = overview?.telemetry?.recentHistory || [];
+
+  const filteredServices = catalogEntries.filter((s) => {
     if (activeFilter === 'all') return true;
     return s.provider.toLowerCase() === activeFilter.toLowerCase();
   });
 
+  const awsBadge = getHealthBadgeStyle(awsStatus);
+  const azureBadge = getHealthBadgeStyle(azureStatus);
+  const consulBadge = getHealthBadgeStyle(consulStatus);
+  const wgBadge = getHealthBadgeStyle(wgStatus);
+
   return (
-    <div className="flex flex-col w-full gap-space-lg">
+    <div className="flex flex-col w-full gap-space-lg min-w-0">
       {/* Top Banner & Action Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-space-xs mb-1">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md min-w-0">
+        <div className="flex flex-col min-w-0">
+          <div className="flex flex-wrap items-center gap-space-xs mb-1">
             <span className="font-code-sm text-code-sm px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-medium">
-              WAN Mesh Active
+              AWS ↔ Azure Cross-Cloud Mesh
             </span>
-            <span className="font-code-sm text-code-sm text-secondary">● Protocol Serf v0.10.1</span>
+            <span className="font-code-sm text-code-sm text-secondary">
+              ● Datacenter: {overview?.consul?.connected ? overview.consul.datacenter : 'Unavailable'}
+            </span>
+            {overview?.timestamp && (
+              <span className="font-code-sm text-code-sm text-secondary">
+                • Updated: {new Date(overview.timestamp).toLocaleTimeString()}
+              </span>
+            )}
           </div>
           <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight">
-            Cross-Cloud Service Registry
+            Cross-Cloud Service Discovery Registry
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant mt-0.5">
-            Monitor and discover services across cloud environments.
+            Live multi-cloud telemetry connecting AWS EC2 (User Service) and Azure VM (Payment Service) via Consul &amp; WireGuard VPN.
           </p>
         </div>
-        <div className="flex items-center gap-space-sm self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-space-sm self-start md:self-auto">
           <button
             onClick={handleSyncMesh}
-            className="flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition-all shadow-sm active:scale-95"
+            className="flex items-center gap-1.5 px-3 sm:px-space-md py-2 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition-all shadow-sm active:scale-95"
           >
             <span
-              className={`material-symbols-outlined text-[18px] text-primary transition-transform duration-700 ${
+              className={`material-symbols-outlined text-[18px] text-primary transition-transform duration-500 ${
                 isSyncing ? 'rotate-180' : ''
               }`}
             >
               sync
             </span>
-            <span className="font-label-lg text-label-lg font-medium">Sync Consul Mesh</span>
+            <span className="font-label-md sm:font-label-lg text-label-md sm:text-label-lg font-medium">Refresh Live Status</span>
           </button>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-primary-container text-on-primary-container hover:bg-primary transition-all shadow-md active:scale-95"
+            className="flex items-center gap-1.5 px-3 sm:px-space-md py-2 rounded-lg bg-primary-container text-on-primary-container hover:bg-primary transition-all shadow-md active:scale-95"
           >
             <span className="material-symbols-outlined text-[18px]">add_circle</span>
-            <span className="font-label-lg text-label-lg font-medium">+ Register New Service</span>
+            <span className="font-label-md sm:font-label-lg text-label-md sm:text-label-lg font-medium">Register Service</span>
           </button>
         </div>
       </div>
 
-      {/* Top 4 Metric Cards */}
+      {/* API Error Alert Banner */}
+      {overviewError && (
+        <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex items-center justify-between gap-space-sm">
+          <div className="flex items-center gap-2 font-body-sm text-body-sm">
+            <span className="material-symbols-outlined text-[20px]">cloud_off</span>
+            <span>
+              <strong>Backend API Unavailable:</strong> {overviewError}. Service statuses are marked Unknown until backend connectivity is restored.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Azure Exclusion Warning when Payment Service is CRITICAL */}
+      {overview?.azurePaymentService?.excludedFromDiscovery && overview?.azurePaymentService?.registered && (
+        <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border border-error/30">
+          <div className="flex items-start sm:items-center gap-2 font-body-sm text-body-sm">
+            <span className="material-symbols-outlined text-[20px] shrink-0">warning</span>
+            <span>
+              <strong>Consul Health Alert:</strong> Azure Payment Service (<code>{overview.azurePaymentService.serviceId}</code>) is currently <strong>{azureStatus}</strong> and automatically excluded from healthy discovery (<code>?passing</code>). Cross-cloud payments will fail gracefully until recovery.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Top 4 Live Overview Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
-        {/* Card 1 */}
-        <div className="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-surface-container-high/40 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-[22px]">dns</span>
+        {/* Card 1: AWS User Service Status */}
+        <div className="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm relative overflow-hidden min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary overflow-hidden shrink-0">
+              <span className="material-symbols-outlined text-[22px]">cloud</span>
             </div>
-            <span className="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-surface-container text-primary flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span> +1 today
+            <span className={`font-code-sm text-code-sm font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${awsBadge.bg} ${awsBadge.text}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${awsBadge.dot}`}></span> {awsStatus}
             </span>
           </div>
           <div className="mt-space-md">
-            <div className="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Total Services</div>
-            <div className="font-headline-xl text-headline-xl text-on-surface mt-1 flex items-baseline gap-2">
-              <span>{total}</span> <span className="font-body-md text-body-md text-secondary font-normal">Active</span>
+            <div className="font-code-sm text-code-sm uppercase tracking-wider text-secondary">AWS User Service</div>
+            <div className="font-headline-lg text-headline-lg text-on-surface mt-1 font-bold">
+              {awsStatus === 'PASSING' ? 'Online' : awsStatus === 'UNKNOWN' ? 'Unknown' : 'Unavailable'}
             </div>
           </div>
-          <div className="mt-space-sm pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
-            <span>Across 3 Cloud Datacenters</span>
-            <span className="text-primary font-medium">100% mesh</span>
+          <div className="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-1 text-on-surface-variant font-code-sm text-code-sm">
+            <span>{overview?.architecture?.aws?.region || 'us-east-1'} • :{overview?.awsUserService?.port || 8002}</span>
+            <span className="text-primary font-medium">
+              {overview?.awsUserService?.latencyMs !== undefined ? `${overview.awsUserService.latencyMs}ms probe` : 'No probe'}
+            </span>
           </div>
         </div>
 
-        {/* Card 2 */}
-        <div className="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-tertiary-container/10 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary">
-              <span className="material-symbols-outlined text-[22px]">check_circle</span>
+        {/* Card 2: Azure Payment Service Status */}
+        <div className="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm relative overflow-hidden min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary overflow-hidden shrink-0">
+              <span className="material-symbols-outlined text-[22px]">payments</span>
             </div>
-            <span className="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span>{' '}
-              {total > 0 ? ((passing / total) * 100).toFixed(1) : '100'}% operational
+            <span className={`font-code-sm text-code-sm font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${azureBadge.bg} ${azureBadge.text}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${azureBadge.dot}`}></span> {azureStatus}
             </span>
           </div>
           <div className="mt-space-md">
-            <div className="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Healthy Services</div>
-            <div className="font-headline-xl text-headline-xl text-on-surface mt-1 flex items-baseline gap-2">
-              <span>{passing}</span>{' '}
-              <span className="font-body-md text-body-md text-tertiary font-normal">Passing</span>
+            <div className="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Azure Payment Service</div>
+            <div className="font-headline-lg text-headline-lg text-on-surface mt-1 font-bold">
+              {azureStatus === 'PASSING' ? 'Healthy' : azureStatus === 'CRITICAL' ? 'Critical (503)' : 'Unknown'}
             </div>
           </div>
-          <div className="mt-space-sm pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
-            <span className="flex items-center gap-1 text-tertiary">
-              <span className="material-symbols-outlined text-[16px]">trending_up</span> Steady ping
+          <div className="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-1 text-on-surface-variant font-code-sm text-code-sm">
+            <span className="truncate max-w-[140px]">
+              {overview?.azurePaymentService?.region || 'Central India'} • :{overview?.azurePaymentService?.port || 8001}
             </span>
-            <span className="font-medium text-secondary">TTL 10s check</span>
+            <span
+              className={`font-medium ${
+                !overview || !overview.azurePaymentService?.registered
+                  ? 'text-secondary'
+                  : overview.azurePaymentService.excludedFromDiscovery
+                  ? 'text-error'
+                  : 'text-tertiary'
+              }`}
+            >
+              {!overview
+                ? 'Checking...'
+                : !overview.azurePaymentService?.registered
+                ? 'Not registered'
+                : overview.azurePaymentService.excludedFromDiscovery
+                ? 'Excluded'
+                : 'Discoverable'}
+            </span>
           </div>
         </div>
 
-        {/* Card 3 */}
-        <div className="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-error-container/40 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-lg bg-error-container flex items-center justify-center text-error">
-              <span className="material-symbols-outlined text-[22px]">warning</span>
+        {/* Card 3: Consul Registry & WireGuard VPN */}
+        <div className="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm relative overflow-hidden min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary overflow-hidden shrink-0">
+              <span className="material-symbols-outlined text-[22px]">vpn_lock</span>
             </div>
-            <span className="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-error-container text-on-error-container flex items-center gap-1 animate-pulse">
-              <span className="w-1.5 h-1.5 rounded-full bg-error"></span> Attention Required
+            <span className={`font-code-sm text-code-sm font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${consulBadge.bg} ${consulBadge.text}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${consulBadge.dot}`}></span> Consul: {consulStatus}
             </span>
           </div>
           <div className="mt-space-md">
-            <div className="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Unhealthy Services</div>
-            <div className="font-headline-xl text-headline-xl text-error mt-1 flex items-baseline gap-2">
-              <span>{critical}</span>{' '}
-              <span className="font-body-md text-body-md text-error font-normal">Failing</span>
+            <div className="font-code-sm text-code-sm uppercase tracking-wider text-secondary">WireGuard VPN Mesh</div>
+            <div className="font-headline-lg text-headline-lg text-on-surface mt-1 font-bold flex flex-wrap items-center gap-2">
+              <span className="truncate">{wgStatus}</span>
+              <span className={`inline-flex px-2 py-0.5 rounded-full font-code-sm text-code-sm font-medium ${wgBadge.bg} ${wgBadge.text}`}>
+                UDP 51820
+              </span>
             </div>
           </div>
-          <div className="mt-space-sm pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
-            <span className="text-error font-medium">Azure Order Check 503</span>
-            <span className="text-secondary font-medium">2m ago</span>
+          <div className="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-1 text-on-surface-variant font-code-sm text-code-sm">
+            <span>{overview?.wireguard?.awsWgIp || '10.8.0.1'} ↔ {overview?.wireguard?.azureWgIp || '10.8.0.2'}</span>
+            <span className="text-primary font-medium truncate max-w-[90px]">
+              {overview?.consul?.datacenter || '—'}
+            </span>
           </div>
         </div>
 
-        {/* Card 4 */}
-        <div className="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-surface-container-highest/60 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-[22px]">lan</span>
+        {/* Card 4: Payment Telemetry & Latency */}
+        <div className="flex flex-col p-space-md rounded-xl bg-surface-container-lowest shadow-sm relative overflow-hidden min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary overflow-hidden shrink-0">
+              <span className="material-symbols-outlined text-[22px]">monitoring</span>
             </div>
-            <span className="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-surface-container-low text-secondary flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span> 14ms avg
+            <span className="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-surface-container text-on-surface">
+              {latestLatency !== undefined ? `Latest: ${latestLatency}ms` : 'No txns yet'}
             </span>
           </div>
           <div className="mt-space-md">
-            <div className="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Cloud Providers</div>
-            <div className="font-headline-xl text-headline-xl text-on-surface mt-1 flex items-baseline gap-2">
-              3 <span className="font-body-md text-body-md text-secondary font-normal">Connected</span>
+            <div className="font-code-sm text-code-sm uppercase tracking-wider text-secondary">Cross-Cloud Requests</div>
+            <div className="font-headline-lg text-headline-lg text-on-surface mt-1 font-bold flex items-baseline gap-2">
+              <span>{totalReq ?? '—'}</span>
+              <span className="font-body-sm text-body-sm text-secondary font-normal">Total</span>
             </div>
           </div>
-          <div className="mt-space-sm pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
-            <span className="font-medium text-on-surface">AWS · GCP · Azure</span>
-            <span className="text-primary font-medium">Mesh Linked</span>
+          <div className="mt-space-sm pt-space-xs flex items-center justify-between font-code-sm text-code-sm">
+            <span className="text-tertiary font-semibold">{successReq ?? 0} Success</span>
+            <span className="text-error font-semibold">{failedReq ?? 0} Failed</span>
           </div>
         </div>
       </div>
 
-      {/* Cloud Provider Breakdown */}
+      {/* Cloud Architecture Visualization (AWS EC2 <-> WireGuard <-> Azure VM) */}
       <div className="flex flex-col gap-space-sm">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-space-xs">
-            <span className="material-symbols-outlined text-primary text-[20px]">cloud_sync</span>
-            <h2 className="font-headline-md text-headline-md text-on-surface">Cloud Provider Breakdown</h2>
+            <span className="material-symbols-outlined text-primary text-[20px]">account_tree</span>
+            <h2 className="font-headline-md text-headline-md text-on-surface">
+              Cross-Cloud Architecture &amp; Communication Path
+            </h2>
           </div>
-          <span className="font-code-sm text-code-sm text-secondary">Multi-Datacenter Federation: 3/3 Peers Responding</span>
+          <span className="font-code-sm text-code-sm text-secondary">
+            {overview?.wireguard?.detail || 'Inspecting live topology...'}
+          </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md">
-          {/* AWS Card */}
-          <div className="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-space-sm">
-                <div className="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center">
-                  <span className="material-symbols-outlined text-on-surface text-[24px]">cloud</span>
-                </div>
-                <div>
-                  <div className="font-label-lg text-label-lg font-semibold text-on-surface">Amazon Web Services</div>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="inline-flex items-center gap-1 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary"></span> AWS us-east-1
-                    </span>
+
+        <div className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex flex-col gap-space-md">
+          {/* Interactive Pipeline Step Strip */}
+          <div className="grid grid-cols-1 lg:grid-cols-11 gap-space-sm items-center">
+            {/* AWS EC2 Node */}
+            <div className="lg:col-span-4 rounded-xl bg-surface-container-low p-space-md border border-surface-container-high flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[22px]">cloud</span>
+                  <div>
+                    <div className="font-label-lg text-label-lg font-bold text-on-surface">AWS EC2 Node</div>
+                    <div className="font-code-sm text-code-sm text-secondary">
+                      Region: {overview?.architecture?.aws?.region || 'us-east-1'}
+                    </div>
                   </div>
                 </div>
+                <span className={`px-2 py-0.5 rounded-full font-code-sm text-code-sm font-semibold ${awsBadge.bg} ${awsBadge.text}`}>
+                  {awsStatus}
+                </span>
               </div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Agent Alive
-              </span>
-            </div>
-            <div className="mt-space-md grid grid-cols-2 gap-2 bg-surface-container-low/60 p-space-sm rounded-lg">
-              <div>
-                <div className="font-code-sm text-code-sm text-secondary uppercase">Ingress Latency</div>
-                <div className="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">12 ms</div>
-              </div>
-              <div>
-                <div className="font-code-sm text-code-sm text-secondary uppercase">Health Score</div>
-                <div className="font-headline-md text-headline-md text-tertiary font-semibold mt-0.5">100%</div>
-              </div>
-            </div>
-            <div className="mt-space-md flex flex-col gap-1.5 font-code-sm text-code-sm text-on-surface-variant">
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">Registered Service:</span>
-                <span className="text-on-surface font-semibold bg-surface-container px-1.5 py-0.5 rounded">User Service</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">VPC ID:</span>
-                <span className="text-on-surface">vpc-0921bf3a</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">Security Group:</span>
-                <span className="text-on-surface">sg-consul-mesh</span>
+              <div className="grid grid-cols-2 gap-2 mt-1 font-code-sm text-code-sm">
+                <div className="bg-surface-container-lowest p-2 rounded">
+                  <span className="text-secondary block text-[11px]">User Service</span>
+                  <span className="text-on-surface font-semibold">Port {overview?.awsUserService?.port || 8002}</span>
+                </div>
+                <div className="bg-surface-container-lowest p-2 rounded">
+                  <span className="text-secondary block text-[11px]">WireGuard IP</span>
+                  <span className="text-on-surface font-semibold">{overview?.wireguard?.awsWgIp || '10.8.0.1'}</span>
+                </div>
+                <div className="bg-surface-container-lowest p-2 rounded col-span-2 flex justify-between">
+                  <span className="text-secondary">Consul Server (:8500):</span>
+                  <span className="text-primary font-semibold">
+                    {overview?.consul?.connected ? `Active (${overview.consul.datacenter})` : 'Unavailable'}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="mt-space-md pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
-              <span className="flex items-center gap-1 text-tertiary font-medium">
-                <span className="material-symbols-outlined text-[16px]">sensors</span> Gossip Serf OK
-              </span>
-              <span className="text-secondary">Node: aws-us-east-srv01</span>
+
+            {/* WireGuard VPN & Discovery Path */}
+            <div className="lg:col-span-3 flex flex-col items-center justify-center p-space-sm rounded-xl bg-surface-container-low/60 text-center gap-1.5">
+              <div className="flex items-center gap-1 font-code-sm text-code-sm font-semibold text-primary">
+                <span className={`material-symbols-outlined text-[18px] ${isPaying ? 'animate-spin' : ''}`}>
+                  {isPaying ? 'sync' : 'vpn_key'}
+                </span>
+                <span>WireGuard Tunnel</span>
+              </div>
+              <div className="w-full flex items-center justify-center gap-1 my-1">
+                <span className={`h-1 flex-1 rounded-full ${isPaying ? 'bg-primary animate-pulse' : wgStatus === 'CONNECTED' ? 'bg-tertiary' : 'bg-outline-variant'}`}></span>
+                <span className={`px-2 py-0.5 rounded font-code-sm text-[11px] font-bold ${wgBadge.bg} ${wgBadge.text}`}>
+                  {isPaying ? 'ROUTING PAYMENT...' : 'UDP 51820'}
+                </span>
+                <span className={`h-1 flex-1 rounded-full ${isPaying ? 'bg-primary animate-pulse' : wgStatus === 'CONNECTED' ? 'bg-tertiary' : 'bg-outline-variant'}`}></span>
+              </div>
+              <div className="font-code-sm text-[11px] text-secondary">
+                Consul Discovery → {overview?.azurePaymentService?.address || overview?.wireguard?.azureWgIp || '10.8.0.2'}
+              </div>
+            </div>
+
+            {/* Azure VM Node */}
+            <div className="lg:col-span-4 rounded-xl bg-surface-container-low p-space-md border border-surface-container-high flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[22px]">cloud_queue</span>
+                  <div>
+                    <div className="font-label-lg text-label-lg font-bold text-on-surface">Azure VM Node</div>
+                    <div className="font-code-sm text-code-sm text-secondary">
+                      Region: {overview?.azurePaymentService?.region || 'Central India'}
+                    </div>
+                  </div>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full font-code-sm text-code-sm font-semibold ${azureBadge.bg} ${azureBadge.text}`}>
+                  {azureStatus}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-1 font-code-sm text-code-sm">
+                <div className="bg-surface-container-lowest p-2 rounded">
+                  <span className="text-secondary block text-[11px]">Payment Service</span>
+                  <span className="text-on-surface font-semibold">Port {overview?.azurePaymentService?.port || 8001}</span>
+                </div>
+                <div className="bg-surface-container-lowest p-2 rounded">
+                  <span className="text-secondary block text-[11px]">WireGuard IP</span>
+                  <span className="text-on-surface font-semibold">
+                    {overview?.azurePaymentService?.address || overview?.wireguard?.azureWgIp || '10.8.0.2'}
+                  </span>
+                </div>
+                <div className="bg-surface-container-lowest p-2 rounded col-span-2 flex justify-between">
+                  <span className="text-secondary">Service ID:</span>
+                  <span className="text-on-surface font-semibold truncate max-w-[170px]">
+                    {overview?.azurePaymentService?.serviceId || 'Not registered'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* GCP Card */}
-          <div className="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-space-sm">
-                <div className="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center">
-                  <span className="material-symbols-outlined text-on-surface text-[24px]">cloud_queue</span>
-                </div>
-                <div>
-                  <div className="font-label-lg text-label-lg font-semibold text-on-surface">Google Cloud Platform</div>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="inline-flex items-center gap-1 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary"></span> GCP us-central1
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Agent Alive
-              </span>
-            </div>
-            <div className="mt-space-md grid grid-cols-2 gap-2 bg-surface-container-low/60 p-space-sm rounded-lg">
-              <div>
-                <div className="font-code-sm text-code-sm text-secondary uppercase">Ingress Latency</div>
-                <div className="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">18 ms</div>
-              </div>
-              <div>
-                <div className="font-code-sm text-code-sm text-secondary uppercase">Health Score</div>
-                <div className="font-headline-md text-headline-md text-tertiary font-semibold mt-0.5">100%</div>
-              </div>
-            </div>
-            <div className="mt-space-md flex flex-col gap-1.5 font-code-sm text-code-sm text-on-surface-variant">
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">Registered Service:</span>
-                <span className="text-on-surface font-semibold bg-surface-container px-1.5 py-0.5 rounded">Payment Service</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">Project ID:</span>
-                <span className="text-on-surface truncate max-w-[150px]">gcp-crosscloud-prod</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">VPC Network:</span>
-                <span className="text-on-surface">default-vpc</span>
-              </div>
-            </div>
-            <div className="mt-space-md pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
-              <span className="flex items-center gap-1 text-tertiary font-medium">
-                <span className="material-symbols-outlined text-[16px]">sensors</span> Gossip Serf OK
-              </span>
-              <span className="text-secondary">Node: gcp-central-node-02</span>
-            </div>
-          </div>
-
-          {/* Azure Card */}
-          <div className="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-space-sm">
-                <div className="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center">
-                  <span className="material-symbols-outlined text-on-surface text-[24px]">cloud_sync</span>
-                </div>
-                <div>
-                  <div className="font-label-lg text-label-lg font-semibold text-on-surface">Microsoft Azure</div>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="inline-flex items-center gap-1 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary"></span> Azure East US 2
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-code-sm text-code-sm font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span> Degraded
-              </span>
-            </div>
-            <div className="mt-space-md grid grid-cols-2 gap-2 bg-surface-container-low/60 p-space-sm rounded-lg">
-              <div>
-                <div className="font-code-sm text-code-sm text-secondary uppercase">Ingress Latency</div>
-                <div className="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">32 ms</div>
-              </div>
-              <div>
-                <div className="font-code-sm text-code-sm text-secondary uppercase">Health Status</div>
-                <div className="font-headline-md text-headline-md text-error font-semibold mt-0.5">1 Failing</div>
-              </div>
-            </div>
-            <div className="mt-space-md flex flex-col gap-1.5 font-code-sm text-code-sm text-on-surface-variant">
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">Registered Service:</span>
-                <span className="text-on-surface font-semibold bg-surface-container px-1.5 py-0.5 rounded">Order Service</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">VNet Name:</span>
-                <span className="text-on-surface">vnet-azure-mesh</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-secondary">Compute VM:</span>
-                <span className="text-on-surface">vm-order-srv-01</span>
-              </div>
-            </div>
-            <div className="mt-space-md pt-space-xs flex items-center justify-between text-on-surface-variant font-code-sm text-code-sm">
-              <span className="flex items-center gap-1 text-error font-medium">
-                <span className="material-symbols-outlined text-[16px]">error</span> HTTP 503 Critical
-              </span>
-              <span className="text-secondary">Check ID: serfHealth</span>
-            </div>
+          {/* Exact Communication Path Flow Bar */}
+          <div className="flex flex-wrap items-center justify-center gap-2 py-2 px-3 rounded-lg bg-surface-container-low font-code-sm text-code-sm text-on-surface-variant">
+            <span className="font-semibold text-on-surface">User</span>
+            <span className="material-symbols-outlined text-[15px] text-primary">arrow_forward</span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-lowest font-medium">AWS User Service (:8002)</span>
+            <span className="material-symbols-outlined text-[15px] text-primary">arrow_forward</span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-lowest font-medium">Consul Discovery (:8500)</span>
+            <span className="material-symbols-outlined text-[15px] text-primary">arrow_forward</span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-lowest font-medium">WireGuard VPN</span>
+            <span className="material-symbols-outlined text-[15px] text-primary">arrow_forward</span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-lowest font-medium">Azure Payment Service (:8001)</span>
+            <span className="material-symbols-outlined text-[15px] text-tertiary">arrow_forward</span>
+            <span className="font-semibold text-tertiary">Transaction Response</span>
           </div>
         </div>
       </div>
 
-      {/* Real Cross-Cloud Microservice Communication Panel */}
-      <div className="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm border border-primary/20">
+      {/* Functional Cross-Cloud Payment Simulator */}
+      <div className="flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm border border-primary/20 min-w-0 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pb-space-sm border-b border-surface-container-high/60">
-          <div className="flex items-center gap-space-sm">
-            <div className="w-10 h-10 rounded-lg bg-primary-container/30 flex items-center justify-center text-primary">
+          <div className="flex items-center gap-space-sm min-w-0">
+            <div className="w-10 h-10 rounded-lg bg-primary-container/30 flex items-center justify-center text-primary overflow-hidden shrink-0">
               <span className="material-symbols-outlined text-[24px]">sync_alt</span>
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-headline-md text-headline-md text-on-surface">Real Cross-Cloud Service Communication</h2>
-                <span className="inline-flex items-center gap-1 font-code-sm text-code-sm px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span> Live WireGuard / Mesh Link
-                </span>
-              </div>
+              <h2 className="font-headline-md text-headline-md text-on-surface">Cross-Cloud Payment Simulator</h2>
               <p className="font-body-sm text-body-sm text-secondary">
-                AWS User Service (Port 8002) dynamically discovers & dispatches payments to GCP Payment Service (Port 8001) via Consul
+                Dispatches <code>POST /api/users/:id/pay</code> to AWS User Service, which discovers Azure Payment Service via Consul.
               </p>
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-space-sm">
-            <div className="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-surface-container">
-              <span className="font-code-sm text-code-sm text-secondary">Amount ($):</span>
-              <input
-                type="number"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                className="w-20 bg-surface-container text-on-surface font-code-sm text-code-sm px-2 py-0.5 rounded outline-none border border-outline-variant/30 text-right font-medium"
-                min="1"
-              />
-            </div>
-            <button
-              onClick={handleTriggerCrossCloud}
-              disabled={isExecutingCrossCloud}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold hover:bg-primary/90 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+        <form onSubmit={handleExecutePayment} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-space-sm mt-space-md items-end">
+          <div className="lg:col-span-3 flex flex-col gap-1">
+            <label className="font-code-sm text-code-sm text-secondary">User ID</label>
+            <select
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              className="w-full bg-surface-container-low px-3 py-2 rounded-lg font-code-sm text-code-sm text-on-surface border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              {isExecutingCrossCloud ? (
-                <>
-                  <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                  <span>Discovering & Paying...</span>
-                </>
+              {users.length > 0 ? (
+                users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.id} — {u.name}
+                  </option>
+                ))
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[18px]">send</span>
-                  <span>Execute Cross-Cloud Payment</span>
+                  <option value="usr_101">usr_101 — Ketaki</option>
+                  <option value="usr_102">usr_102 — Alex Chen</option>
                 </>
               )}
+            </select>
+          </div>
+
+          <div className="lg:col-span-2 flex flex-col gap-1">
+            <label className="font-code-sm text-code-sm text-secondary">Amount</label>
+            <input
+              type="number"
+              min="1"
+              step="any"
+              required
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value)}
+              className="w-full bg-surface-container-low px-3 py-2 rounded-lg font-code-sm text-code-sm text-on-surface border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="lg:col-span-2 flex flex-col gap-1">
+            <label className="font-code-sm text-code-sm text-secondary">Currency</label>
+            <select
+              value={paymentCurrency}
+              onChange={(e) => setPaymentCurrency(e.target.value)}
+              className="w-full bg-surface-container-low px-3 py-2 rounded-lg font-code-sm text-code-sm text-on-surface border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="USD">USD</option>
+              <option value="INR">INR</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+
+          <div className="lg:col-span-3 flex flex-col gap-1">
+            <label className="font-code-sm text-code-sm text-secondary">Description</label>
+            <input
+              type="text"
+              value={paymentDescription}
+              onChange={(e) => setPaymentDescription(e.target.value)}
+              placeholder="Dashboard demo payment"
+              className="w-full bg-surface-container-low px-3 py-2 rounded-lg font-body-sm text-body-sm text-on-surface border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <button
+              type="submit"
+              disabled={isPaying}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-on-primary font-label-lg text-label-lg font-semibold hover:bg-primary/90 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+            >
+              <span className={`material-symbols-outlined text-[18px] ${isPaying ? 'animate-spin' : ''}`}>
+                {isPaying ? 'progress_activity' : 'send'}
+              </span>
+              <span>{isPaying ? 'Paying...' : 'Pay'}</span>
             </button>
           </div>
-        </div>
+        </form>
 
-        {/* Dynamic Topology & Telemetry Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-space-md mt-space-md">
-          <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low border border-surface-container">
-            <span className="font-code-sm text-code-sm text-secondary uppercase">Source Node</span>
-            <div className="font-body-md text-body-md font-semibold text-on-surface mt-1 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-primary"></span>
-              AWS User Service
-            </div>
-            <span className="font-code-sm text-code-sm text-on-surface-variant font-mono mt-0.5">Port 8002 · us-east-1</span>
+        {/* Live Payment Error Result */}
+        {lastPaymentError && (
+          <div className="mt-space-md p-space-sm rounded-lg bg-error-container text-on-error-container flex items-center gap-2 font-code-sm text-code-sm">
+            <span className="material-symbols-outlined text-[18px]">error</span>
+            <span><strong>Payment Error:</strong> {lastPaymentError}</span>
           </div>
+        )}
 
-          <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low border border-surface-container">
-            <span className="font-code-sm text-code-sm text-secondary uppercase">Discovery Mechanism</span>
-            <div className="font-body-md text-body-md font-semibold text-on-surface mt-1 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-tertiary"></span>
-              HashiCorp Consul
+        {/* Live Payment Success Result (all required fields) */}
+        {lastPaymentResult && !lastPaymentError && (
+          <div className="mt-space-md p-space-md rounded-xl bg-surface-container-low border border-tertiary/30 flex flex-col gap-space-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-tertiary font-label-lg text-label-lg font-bold">
+                <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                <span>Cross-Cloud Payment Response ({lastPaymentResult.status.toUpperCase()})</span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
+                Latency: {lastPaymentResult.latencyMs} ms
+              </span>
             </div>
-            <span className="font-code-sm text-code-sm text-on-surface-variant font-mono mt-0.5">:8500 /v1/health/service</span>
-          </div>
 
-          <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low border border-surface-container">
-            <span className="font-code-sm text-code-sm text-secondary uppercase">Target Node</span>
-            <div className="font-body-md text-body-md font-semibold text-on-surface mt-1 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-secondary"></span>
-              GCP Payment Service
-            </div>
-            <span className="font-code-sm text-code-sm text-on-surface-variant font-mono mt-0.5">Port 8001 · us-central1</span>
-          </div>
-
-          <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low border border-surface-container">
-            <span className="font-code-sm text-code-sm text-secondary uppercase">Cross-Cloud Telemetry</span>
-            <div className="font-body-md text-body-md font-semibold text-on-surface mt-1 flex items-center justify-between">
-              <span className="text-tertiary">{telemetry?.telemetry?.successfulRequests ?? 0} Success</span>
-              <span className="text-error">{telemetry?.telemetry?.failedRequests ?? 0} Failed</span>
-            </div>
-            <span className="font-code-sm text-code-sm text-secondary mt-0.5">Total: {telemetry?.telemetry?.totalRequests ?? 0} calls</span>
-          </div>
-        </div>
-
-        {/* Last Transaction Result Banner */}
-        {crossCloudResult && (
-          <div className="mt-space-md p-space-sm rounded-lg bg-surface-container-low/90 border border-tertiary/30 flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-tertiary text-[20px]">check_circle</span>
-              <div className="font-code-sm text-code-sm">
-                <span className="font-semibold text-on-surface">Txn ID: {crossCloudResult.payment?.transactionId}</span>
-                <span className="text-secondary ml-2">
-                  • Discovered Target: <code className="text-primary font-mono">{crossCloudResult.discoveredTarget?.address}:{crossCloudResult.discoveredTarget?.port}</code>
-                </span>
-                <span className="text-secondary ml-2">
-                  • User: <span className="text-on-surface">{crossCloudResult.source?.user?.name}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 font-code-sm text-code-sm">
+              <div className="bg-surface-container-lowest p-2 rounded">
+                <span className="text-secondary block text-[11px]">Transaction ID</span>
+                <span className="text-on-surface font-semibold select-all">{lastPaymentResult.payment.transactionId}</span>
+              </div>
+              <div className="bg-surface-container-lowest p-2 rounded">
+                <span className="text-secondary block text-[11px]">Route</span>
+                <span className="text-primary font-semibold">
+                  {lastPaymentResult.source.cloud} → {lastPaymentResult.discoveredTarget.cloud}
                 </span>
               </div>
-            </div>
-            <div className="flex items-center gap-3 font-code-sm text-code-sm">
-              <span className="px-2 py-0.5 rounded bg-surface-container font-mono text-tertiary font-semibold">
-                ⏱ {crossCloudResult.latencyMs} ms
-              </span>
-              <span className="text-secondary">{new Date(crossCloudResult.timestamp).toLocaleTimeString()}</span>
+              <div className="bg-surface-container-lowest p-2 rounded">
+                <span className="text-secondary block text-[11px]">Discovered Service ID</span>
+                <span className="text-on-surface font-semibold">{lastPaymentResult.discoveredTarget.instanceId}</span>
+              </div>
+              <div className="bg-surface-container-lowest p-2 rounded">
+                <span className="text-secondary block text-[11px]">Discovered Endpoint</span>
+                <span className="text-on-surface font-semibold">
+                  {lastPaymentResult.discoveredTarget.address}:{lastPaymentResult.discoveredTarget.port}
+                </span>
+              </div>
+              <div className="bg-surface-container-lowest p-2 rounded">
+                <span className="text-secondary block text-[11px]">Amount &amp; Time</span>
+                <span className="text-on-surface font-semibold">
+                  {lastPaymentResult.payment.amount} {lastPaymentResult.payment.currency} • {new Date(lastPaymentResult.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Main 2-Column Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
-        {/* Left Column (8 cols): Registered Cross-Cloud Services */}
-        <div className="lg:col-span-8 flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+      {/* Transaction Monitoring Section (GET /api/telemetry) */}
+      <div className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex flex-col gap-space-sm min-w-0 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-space-xs border-b border-surface-container">
+          <div className="min-w-0">
+            <h2 className="font-headline-md text-headline-md text-on-surface">Cross-Cloud Transaction Telemetry</h2>
+            <p className="font-body-sm text-body-sm text-secondary">
+              Live data retrieved from <code>GET /api/telemetry</code> on AWS User Service.
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low text-secondary font-code-sm text-code-sm">
+            <span className="material-symbols-outlined text-[16px] shrink-0">memory</span>
+            <span className="break-words">{overview?.telemetry?.storageNote || 'In-memory telemetry (resets when User Service restarts)'}</span>
+          </span>
+        </div>
+
+        {recentHistory.length === 0 ? (
+          <div className="py-6 text-center text-secondary font-body-sm text-body-sm bg-surface-container-low/40 rounded-lg">
+            No transactions recorded in memory yet. Use the Payment Simulator above to execute a live cross-cloud transaction.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-code-sm text-code-sm">
+              <thead>
+                <tr className="bg-surface-container-low text-secondary uppercase">
+                  <th className="py-2 px-3 rounded-l-lg">Status</th>
+                  <th className="py-2 px-3">Transaction ID / Error</th>
+                  <th className="py-2 px-3">Route</th>
+                  <th className="py-2 px-3">Target Address</th>
+                  <th className="py-2 px-3">Amount</th>
+                  <th className="py-2 px-3">Latency</th>
+                  <th className="py-2 px-3 text-right rounded-r-lg">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentHistory.map((tx, idx) => {
+                  const isOk = tx.status === 'SUCCESS';
+                  return (
+                    <tr key={`${tx.timestamp}-${idx}`} className="hover:bg-surface-container-low/50">
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${
+                            isOk
+                              ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                              : 'bg-error-container text-on-error-container'
+                          }`}
+                        >
+                          {tx.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-on-surface font-medium select-all">
+                        {tx.transactionId || tx.error || '—'}
+                      </td>
+                      <td className="py-2.5 px-3 text-primary font-semibold">
+                        {tx.sourceCloud} → {tx.targetCloud || '—'}
+                      </td>
+                      <td className="py-2.5 px-3 text-on-surface">{tx.targetAddress || '—'}</td>
+                      <td className="py-2.5 px-3 text-on-surface">
+                        {tx.amount} {tx.currency || 'USD'}
+                      </td>
+                      <td className="py-2.5 px-3 text-on-surface">
+                        {tx.latencyMs !== undefined ? `${tx.latencyMs}ms` : '—'}
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-secondary">
+                        {new Date(tx.timestamp).toLocaleTimeString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom 2-Column Section: Live Consul Catalog & Live Mesh Log */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg min-w-0">
+        {/* Left Column: Registered Cross-Cloud Services */}
+        <div className="lg:col-span-8 flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm min-w-0 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-sm">
             <div>
-              <h2 className="font-headline-md text-headline-md text-on-surface">Registered Cross-Cloud Services</h2>
+              <h2 className="font-headline-md text-headline-md text-on-surface">Consul Service Registry</h2>
               <p className="font-body-sm text-body-sm text-secondary">
-                Active nodes resolved via Consul catalog synchronization
+                Live records resolved via <code>GET /v1/catalog/services</code> &amp; health checks
               </p>
             </div>
-            <div className="inline-flex p-1 rounded-lg bg-surface-container-low" id="service-filter-tabs">
-              <button
-                className={`filter-tab px-3 py-1 rounded-md font-code-sm text-code-sm font-medium transition-all ${
-                  activeFilter === 'all'
-                    ? 'bg-surface-container-lowest text-primary shadow-sm'
-                    : 'text-secondary hover:text-on-surface'
-                }`}
-                onClick={() => setActiveFilter('all')}
-              >
-                All ({total})
-              </button>
-              <button
-                className={`filter-tab px-3 py-1 rounded-md font-code-sm text-code-sm font-medium transition-all ${
-                  activeFilter === 'aws'
-                    ? 'bg-surface-container-lowest text-primary shadow-sm'
-                    : 'text-secondary hover:text-on-surface'
-                }`}
-                onClick={() => setActiveFilter('aws')}
-              >
-                AWS ({services.filter((s) => s.provider.toLowerCase() === 'aws').length})
-              </button>
-              <button
-                className={`filter-tab px-3 py-1 rounded-md font-code-sm text-code-sm font-medium transition-all ${
-                  activeFilter === 'gcp'
-                    ? 'bg-surface-container-lowest text-primary shadow-sm'
-                    : 'text-secondary hover:text-on-surface'
-                }`}
-                onClick={() => setActiveFilter('gcp')}
-              >
-                GCP ({services.filter((s) => s.provider.toLowerCase() === 'gcp').length})
-              </button>
-              <button
-                className={`filter-tab px-3 py-1 rounded-md font-code-sm text-code-sm font-medium transition-all ${
-                  activeFilter === 'azure'
-                    ? 'bg-surface-container-lowest text-primary shadow-sm'
-                    : 'text-secondary hover:text-on-surface'
-                }`}
-                onClick={() => setActiveFilter('azure')}
-              >
-                Azure ({services.filter((s) => s.provider.toLowerCase() === 'azure').length})
-              </button>
+            <div className="inline-flex flex-wrap p-1 rounded-lg bg-surface-container-low">
+              {(['all', 'aws', 'azure', 'gcp'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  className={`px-3 py-1 rounded-md font-code-sm text-code-sm font-medium transition-all ${
+                    activeFilter === tab
+                      ? 'bg-surface-container-lowest text-primary shadow-sm'
+                      : 'text-secondary hover:text-on-surface'
+                  }`}
+                  onClick={() => setActiveFilter(tab)}
+                >
+                  {tab === 'all'
+                    ? `All (${catalogEntries.length})`
+                    : `${tab.toUpperCase()} (${catalogEntries.filter((s) => s.provider.toLowerCase() === tab).length})`}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -661,82 +764,48 @@ export const Dashboard: React.FC = () => {
                 <tr className="bg-surface-container-low text-secondary font-code-sm text-code-sm uppercase">
                   <th className="py-2.5 px-3 rounded-l-lg">Service Name</th>
                   <th className="py-2.5 px-3">Service ID</th>
-                  <th className="py-2.5 px-3">Cloud Provider</th>
-                  <th className="py-2.5 px-3">IP Address</th>
+                  <th className="py-2.5 px-3">Cloud</th>
+                  <th className="py-2.5 px-3">Address</th>
                   <th className="py-2.5 px-3">Port</th>
                   <th className="py-2.5 px-3">Health Status</th>
                   <th className="py-2.5 px-3 text-right rounded-r-lg">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y-0" id="services-table-body">
+              <tbody>
                 {filteredServices.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-secondary">
-                      No services registered under category "{activeFilter}".
+                    <td colSpan={7} className="py-8 text-center text-secondary">
+                      {overview?.consul?.connected
+                        ? `No live services registered under "${activeFilter.toUpperCase()}" in Consul catalog.`
+                        : 'Consul catalog unavailable. Verify Consul daemon is running on AWS backend.'}
                     </td>
                   </tr>
                 ) : (
                   filteredServices.map((s) => {
-                    const isPassing = s.status === 'passing' || s.status === 'Healthy';
-                    const dotClass = isPassing ? 'bg-tertiary' : 'bg-error';
-
+                    const badge = getHealthBadgeStyle(s.healthStatus);
                     return (
-                      <tr
-                        key={s.id}
-                        className="service-row group hover:bg-surface-container-low/50 transition-colors"
-                      >
-                        <td className="py-3 px-3">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2.5 h-2.5 rounded-full ${dotClass} shrink-0`}></span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-label-lg text-label-lg font-semibold text-on-surface">
-                                {s.name}
-                              </span>
-                              {s.isSample ? (
-                                <span className="text-[9px] px-1 py-0.2 rounded bg-surface-container-high text-secondary font-code-sm uppercase">
-                                  DEMO
-                                </span>
-                              ) : (
-                                <span className="text-[9px] px-1 py-0.2 rounded bg-primary/10 text-primary font-code-sm uppercase font-bold">
-                                  CONSUL
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
+                      <tr key={s.id} className="hover:bg-surface-container-low/50 transition-colors">
+                        <td className="py-3 px-3 font-label-lg text-label-lg font-semibold text-on-surface">{s.name}</td>
                         <td className="py-3 px-3 font-code-sm text-code-sm text-secondary select-all">{s.id}</td>
                         <td className="py-3 px-3">
                           <span className="inline-flex items-center gap-1.5 font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container font-medium text-on-surface">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary"></span> {s.provider}
+                            {s.provider}
                           </span>
                         </td>
                         <td className="py-3 px-3 font-code-sm text-code-sm text-on-surface select-all">{s.address}</td>
                         <td className="py-3 px-3 font-code-sm text-code-sm text-secondary">{s.port}</td>
                         <td className="py-3 px-3">
-                          {isPassing ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Passing
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container font-code-sm text-code-sm font-semibold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-error"></span> Critical
-                            </span>
-                          )}
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold ${badge.bg} ${badge.text}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span> {s.healthStatus}
+                          </span>
                         </td>
                         <td className="py-3 px-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               className="px-2 py-1 rounded bg-surface-container text-primary font-code-sm text-code-sm hover:bg-surface-container-high transition-colors"
-                              onClick={() => handleDnsQuery(`${s.serviceName || s.id}.service.consul`, `${s.address}:${s.port}`)}
-                              title="Query DNS via Express"
+                              onClick={() => handleLiveProbe(s.id)}
                             >
-                              Query DNS
-                            </button>
-                            <button
-                              className="px-2 py-1 rounded bg-surface-container text-secondary font-code-sm text-code-sm hover:text-on-surface transition-colors"
-                              onClick={() => handleInspect(s.id)}
-                            >
-                              Inspect
+                              Probe
                             </button>
                             <button
                               className="px-2 py-1 rounded bg-surface-container text-error font-code-sm text-code-sm hover:bg-error-container transition-colors"
@@ -753,148 +822,109 @@ export const Dashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
-
-          <div className="mt-space-md p-space-sm rounded-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-xs font-code-sm text-code-sm text-secondary">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[18px]">info</span>
-              <span>
-                Catalog TTL Sync interval: <strong>5000ms</strong>
-              </span>
-            </div>
-            <div>
-              <span>
-                Local Agent HTTP API: <strong>http://127.0.0.1:8500</strong>
-              </span>
-            </div>
-          </div>
         </div>
 
-        {/* Right Column (4 cols): Consul Gossip Stream */}
-        <div className="lg:col-span-4 flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+        {/* Right Column: Live Consul Health & Telemetry Log */}
+        <div className="lg:col-span-4 flex flex-col rounded-xl bg-surface-container-lowest p-space-md shadow-sm min-w-0 overflow-hidden">
           <div className="flex items-center justify-between pb-space-sm">
             <div className="flex items-center gap-space-xs">
               <span className="material-symbols-outlined text-primary text-[20px]">history</span>
-              <h2 className="font-headline-md text-headline-md text-on-surface">Consul Gossip Stream</h2>
+              <h2 className="font-headline-md text-headline-md text-on-surface">Live Mesh Events</h2>
             </div>
-            <span className="font-code-sm text-code-sm text-secondary">Serf WAN Log</span>
+            <span className="font-code-sm text-code-sm text-secondary">Real-Time</span>
           </div>
 
-          <div className="flex flex-col gap-space-md mt-space-sm relative">
-            <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-surface-container"></div>
-            {/* Event 1 */}
-            <div className="flex items-start gap-space-sm relative z-10">
-              <div className="w-7 h-7 rounded-full bg-error-container text-on-error-container flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[16px]">priority_high</span>
+          <div className="flex flex-col gap-space-md mt-space-sm">
+            {catalogEntries.length === 0 && recentHistory.length === 0 ? (
+              <div className="p-space-sm rounded-lg bg-surface-container-low text-secondary font-body-sm text-body-sm text-center">
+                No active health or transaction events observed yet.
               </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-code-sm text-code-sm text-error font-semibold">[14:02:18] Consul Health Check</span>
-                </div>
-                <p className="font-body-sm text-body-sm text-on-surface mt-0.5 leading-snug">
-                  Order Service (<span className="font-code-sm text-code-sm">order-01:8003/health</span>) HTTP 503 Service Unavailable
-                </p>
-                <span className="font-code-sm text-code-sm text-secondary mt-1">Provider: Azure East US 2</span>
-              </div>
-            </div>
+            ) : (
+              <>
+                {catalogEntries.map((entry) => (
+                  <div key={`ev-${entry.id}`} className="flex items-start gap-space-sm">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                        entry.healthStatus === 'PASSING'
+                          ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                          : 'bg-error-container text-on-error-container'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        {entry.healthStatus === 'PASSING' ? 'check_circle' : 'priority_high'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-code-sm text-code-sm font-semibold text-on-surface truncate">
+                        {entry.name} ({entry.provider}) — {entry.healthStatus}
+                      </span>
+                      <p className="font-code-sm text-[11px] text-secondary break-all line-clamp-2 mt-0.5">
+                        {entry.lastCheckOutput}
+                      </p>
+                    </div>
+                  </div>
+                ))}
 
-            {/* Event 2 */}
-            <div className="flex items-start gap-space-sm relative z-10">
-              <div className="w-7 h-7 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[16px]">radar</span>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-code-sm text-code-sm text-tertiary font-semibold">[13:58:40] Service Discovered</span>
-                </div>
-                <p className="font-body-sm text-body-sm text-on-surface mt-0.5 leading-snug">
-                  Payment Service resolved by Node.js Express backend via Consul DNS (<span className="font-code-sm text-code-sm">gcp-catalog</span>)
-                </p>
-                <span className="font-code-sm text-code-sm text-secondary mt-1">Resolution: 10.0.1.20:8002</span>
-              </div>
-            </div>
-
-            {/* Event 3 */}
-            <div className="flex items-start gap-space-sm relative z-10">
-              <div className="w-7 h-7 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[16px]">add_task</span>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-code-sm text-code-sm text-primary font-semibold">[13:45:12] Service Registered</span>
-                </div>
-                <p className="font-body-sm text-body-sm text-on-surface mt-0.5 leading-snug">
-                  User Service registered on AWS us-east-1 via Consul Catalog API
-                </p>
-                <span className="font-code-sm text-code-sm text-secondary mt-1">Tags: [v1.0, primary, nodejs]</span>
-              </div>
-            </div>
-
-            {/* Event 4 */}
-            <div className="flex items-start gap-space-sm relative z-10">
-              <div className="w-7 h-7 rounded-full bg-surface-container text-secondary flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[16px]">public</span>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-code-sm text-code-sm text-secondary font-semibold">[12:30:00] WAN Federation</span>
-                </div>
-                <p className="font-body-sm text-body-sm text-on-surface mt-0.5 leading-snug">
-                  Cross-cloud gossip mesh sync established between AWS, GCP, and Azure agents
-                </p>
-                <span className="font-code-sm text-code-sm text-secondary mt-1">Latency: serfWAN 14.2ms avg</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-auto pt-space-md">
-            <button
-              onClick={() => showToast('Displaying 4 active gossip events across AWS, GCP, and Azure datacenters.')}
-              className="flex items-center justify-center gap-1 font-label-md text-label-md text-primary hover:underline w-full"
-            >
-              <span>View All Serf &amp; Mesh Telemetry Logs</span>
-              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-            </button>
+                {recentHistory.slice(0, 3).map((tx, idx) => (
+                  <div key={`tx-${idx}`} className="flex items-start gap-space-sm">
+                    <div className="w-7 h-7 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-code-sm text-code-sm font-semibold text-primary">
+                        {tx.sourceCloud} → {tx.targetCloud} ({tx.status})
+                      </span>
+                      <span className="font-code-sm text-[11px] text-secondary truncate">
+                        {tx.transactionId || tx.error} • {tx.latencyMs ?? 0}ms
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Bottom Express Backend Card */}
-      <div className="rounded-xl bg-inverse-surface text-inverse-on-surface p-space-md shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
-        <div className="flex items-start gap-space-sm max-w-2xl">
-          <div className="w-9 h-9 rounded-lg bg-surface-container-high/20 flex items-center justify-center text-tertiary-fixed shrink-0 mt-0.5">
+      {/* Bottom Gateway API Helper Card */}
+      <div className="rounded-xl bg-inverse-surface text-inverse-on-surface p-space-md shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md min-w-0 overflow-hidden">
+        <div className="flex items-start gap-space-sm max-w-2xl min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-surface-container-high/20 flex items-center justify-center text-tertiary-fixed shrink-0 mt-0.5 overflow-hidden">
             <span className="material-symbols-outlined text-[22px]">developer_board</span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-label-lg text-label-lg font-semibold text-inverse-on-surface">Express Backend Ready</span>
-              <span className="px-2 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container font-code-sm text-code-sm">PORT: 3000</span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-label-lg text-label-lg font-semibold text-inverse-on-surface">
+                Secure Backend Proxy Active
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container font-code-sm text-code-sm">
+                Consul Port 8500 Shielded
+              </span>
             </div>
             <p className="font-body-sm text-body-sm text-inverse-on-surface/80 mt-1">
-              REST routes configured at <code className="font-code-sm text-code-sm text-inverse-primary bg-surface-container-high/10 px-1 py-0.5 rounded">/api/services</code>, <code className="font-code-sm text-code-sm text-inverse-primary bg-surface-container-high/10 px-1 py-0.5 rounded">/api/services/:name</code>, <code className="font-code-sm text-code-sm text-inverse-primary bg-surface-container-high/10 px-1 py-0.5 rounded">/api/health</code>, and <code className="font-code-sm text-code-sm text-inverse-primary bg-surface-container-high/10 px-1 py-0.5 rounded">/api/services/register</code>. Ready for Consul Agent HTTP API (:8500).
+              Browser communicates strictly with the Express Gateway, which proxies Consul catalog &amp; AWS-to-Azure calls securely without exposing port 8500 publicly.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-space-xs w-full md:w-auto bg-surface-container-high/10 p-2 rounded-lg justify-between shrink-0">
-          <code className="font-code-sm text-code-sm text-inverse-primary truncate max-w-xs md:max-w-sm">
-            curl -X GET http://localhost:3000/api/services
+        <div className="flex items-center gap-space-xs w-full md:w-auto bg-surface-container-high/10 p-2 rounded-lg justify-between shrink-0 min-w-0 max-w-full">
+          <code className="font-code-sm text-code-sm text-inverse-primary truncate min-w-0 flex-1">
+            POST /api/users/{selectedUserId}/pay
           </code>
           <button
-            className="flex items-center gap-1 px-2.5 py-1 rounded bg-primary-container text-on-primary-container font-code-sm text-code-sm hover:bg-primary transition-colors"
-            onClick={copySnippet}
+            className="flex items-center gap-1 px-2.5 py-1 rounded bg-primary-container text-on-primary-container font-code-sm text-code-sm hover:bg-primary transition-colors shrink-0"
+            onClick={copyApiCurl}
           >
             <span className="material-symbols-outlined text-[16px]">content_copy</span>
-            <span>Copy</span>
+            <span>Copy cURL</span>
           </button>
         </div>
       </div>
 
-      {/* Service Registration Modal */}
       <RegisterServiceModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={fetchOverviewData}
+        onSuccess={fetchAllData}
       />
     </div>
   );
 };
-

@@ -1,36 +1,81 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { discoverService, getHealthChecks } from '../services/api';
+import {
+  discoverService,
+  getHealthChecks,
+  getPaymentServiceHealth,
+  getConsulCatalog,
+} from '../services/api';
+import {
+  ConsulCatalogEntry,
+  PaymentHealthCheckResponse,
+} from '../types';
 import { useToast } from '../components/Toast';
+
+interface ResolvedResult {
+  serviceName: string;
+  instances: Array<{
+    id: string;
+    name: string;
+    address: string;
+    port: number;
+    provider: string;
+    node: string;
+    datacenter: string;
+    tags: string[];
+    status: string;
+    isHealthy: boolean;
+    srvRecord: string;
+    checkOutput: string;
+  }>;
+  passingOnly: boolean;
+  queriedAt: string;
+}
 
 export const ServiceDiscovery: React.FC = () => {
   const { showToast } = useToast();
-  const [query, setQuery] = useState('Payment Service');
+  const [query, setQuery] = useState('payment-service');
   const [cloudPref, setCloudPref] = useState('any');
+  const [passingOnly, setPassingOnly] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
-  const [discoveryResult, setDiscoveryResult] = useState<any>(null);
-  const [isAccordionOpen, setIsAccordionOpen] = useState(true);
-  const [isProbing, setIsProbing] = useState(false);
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [discoveryResult, setDiscoveryResult] = useState<ResolvedResult | null>(null);
 
-  // Health stats
-  const [passingChecks, setPassingChecks] = useState(3);
-  const [warningChecks, setWarningChecks] = useState(0);
-  const [criticalChecks, setCriticalChecks] = useState(0);
+  // Payment-service specific Consul passing vs all comparison
+  const [paymentHealth, setPaymentHealth] = useState<PaymentHealthCheckResponse | null>(null);
+  const [catalogEntries, setCatalogEntries] = useState<ConsulCatalogEntry[]>([]);
 
-  const fetchHealthStats = useCallback(async () => {
+  // Live Consul aggregated health stats
+  const [passingChecks, setPassingChecks] = useState<number | null>(null);
+  const [warningChecks, setWarningChecks] = useState<number | null>(null);
+  const [criticalChecks, setCriticalChecks] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchLiveMetadata = useCallback(async () => {
+    setIsRefreshing(true);
     try {
-      const data = await getHealthChecks();
-      if (data && data.summary) {
-        setPassingChecks(data.summary.passing || 0);
-        setWarningChecks(data.summary.warning || 0);
-        setCriticalChecks(data.summary.critical || 0);
+      const [healthRes, payRes, catRes] = await Promise.all([
+        getHealthChecks().catch(() => null),
+        getPaymentServiceHealth().catch(() => null),
+        getConsulCatalog().catch(() => null),
+      ]);
+      if (healthRes?.summary) {
+        setPassingChecks(healthRes.summary.passing);
+        setWarningChecks(healthRes.summary.warning);
+        setCriticalChecks(healthRes.summary.critical);
+      } else {
+        setPassingChecks(null);
+        setWarningChecks(null);
+        setCriticalChecks(null);
       }
-    } catch {
-      // Default nominal
+      if (payRes) setPaymentHealth(payRes);
+      if (catRes?.instances) setCatalogEntries(catRes.instances);
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
   const performDiscovery = useCallback(
-    async (rawName: string, cloud: string = cloudPref) => {
+    async (rawName: string, cloud: string = cloudPref, filterPassing: boolean = passingOnly) => {
       const normalized = rawName.trim().toLowerCase().replace(/\s+/g, '-');
       if (!normalized) {
         showToast('Please enter a service name to discover', 'error');
@@ -38,771 +83,454 @@ export const ServiceDiscovery: React.FC = () => {
       }
 
       setIsResolving(true);
+      setDiscoveryError(null);
       try {
-        const data = await discoverService(normalized, false);
-        let instances = data.instances || [];
+        const data = await discoverService(normalized, filterPassing);
+        let rawList = data.instances || [];
 
         if (cloud && cloud !== 'any') {
           const target = cloud.toUpperCase();
-          instances = instances.filter((inst) => {
-            const tags = inst.Service?.Tags || [];
-            return tags.some((t) => t.toUpperCase() === target);
+          rawList = rawList.filter((inst: any) => {
+            const tags = inst.tags || inst.Service?.Tags || [];
+            return tags.some((t: string) => String(t).toUpperCase() === target);
           });
         }
 
-        if (instances.length > 0) {
-          const first = instances[0];
-          const tags = first.Service?.Tags || [];
-          const provider = tags.find((t) => ['AWS', 'GCP', 'Azure', 'Hybrid', 'Local'].includes(t)) || 'AWS';
-          const isHealthy = (first.Checks || []).every((c) => c.Status === 'passing');
+        const mapped = rawList.map((inst: any) => {
+          const svcName = inst.name || inst.Service?.Service || normalized;
+          const svcId = inst.id || inst.Service?.ID || 'unknown';
+          const address = inst.address || inst.Service?.Address || inst.Node?.Address || 'unknown';
+          const port = inst.port || inst.Service?.Port || 0;
+          const tags: string[] = inst.tags || inst.Service?.Tags || [];
+          const provider =
+            inst.provider ||
+            tags.find((t) => ['AWS', 'AZURE', 'GCP', 'LOCAL', 'HYBRID'].includes(String(t).toUpperCase())) ||
+            'Unknown';
+          const node = inst.node || inst.Node?.Node || 'unknown';
+          const datacenter = inst.datacenter || inst.Node?.Datacenter || 'unknown';
+          const checks = inst.checks || inst.Checks || [];
+          const statusRaw = inst.status || (checks.every((c: any) => (c.status || c.Status) === 'passing') ? 'passing' : 'critical');
+          const isHealthy = String(statusRaw).toLowerCase() === 'passing';
+          const firstCheck = checks[0] || {};
 
-          setDiscoveryResult({
-            serviceName: first.Service?.Service || normalized,
-            address: first.Service?.Address || '127.0.0.1',
-            port: first.Service?.Port || 8001,
-            provider,
-            node: first.Node?.Node || 'local-node-01',
+          return {
+            id: svcId,
+            name: svcName,
+            address,
+            port,
+            provider: provider.toUpperCase(),
+            node,
+            datacenter,
+            tags,
+            status: statusRaw.toUpperCase(),
             isHealthy,
-            statusText: isHealthy ? 'Healthy (Passing 2/2)' : 'Critical (1 Failing)',
-            srvRecord: `_${first.Service?.Service}._tcp.service.consul. 300 IN SRV 1 1 ${first.Service?.Port} ${first.Node?.Node}`,
-          });
-          showToast(`Resolved service "${normalized}" -> ${first.Service?.Address}:${first.Service?.Port}`, 'success');
-        } else {
-          // Fallback simulation for demonstration
-          if (normalized.includes('order')) {
-            setDiscoveryResult({
-              serviceName: 'order-service',
-              address: '10.0.1.30',
-              port: 8003,
-              provider: 'Azure',
-              node: 'azure-vm-eastus-03',
-              isHealthy: false,
-              statusText: 'Unhealthy / Excluded (1 Failing)',
-              srvRecord: `_order-service._tcp.service.consul. 300 IN SRV 1 1 8003 azure-order-node`,
-            });
-          } else if (normalized.includes('user')) {
-            setDiscoveryResult({
-              serviceName: 'user-service',
-              address: '10.0.1.10',
-              port: 8001,
-              provider: 'AWS',
-              node: 'aws-ec2-worker-101',
-              isHealthy: true,
-              statusText: 'Healthy (Passing 2/2)',
-              srvRecord: `_user-service._tcp.service.consul. 300 IN SRV 1 1 8001 aws-user-node`,
-            });
-          } else {
-            setDiscoveryResult({
-              serviceName: 'payment-service',
-              address: '127.0.0.1',
-              port: 8001,
-              provider: 'AWS',
-              node: 'consul-core-01',
-              isHealthy: true,
-              statusText: 'Healthy (Passing 2/2)',
-              srvRecord: `_payment-service._tcp.service.consul. 300 IN SRV 1 1 8001 payment-01.node.local`,
-            });
-          }
-          showToast(`Discovered instance for "${normalized}"`, 'info');
-        }
-      } catch {
-        // Fallback demo resolution
+            srvRecord: `_${svcName}._tcp.service.${datacenter}.consul. 300 IN SRV 1 1 ${port} ${node}`,
+            checkOutput: firstCheck.output || firstCheck.Output || 'No check output recorded',
+          };
+        });
+
         setDiscoveryResult({
           serviceName: normalized,
-          address: '10.0.1.20',
-          port: 8002,
-          provider: 'GCP',
-          node: 'gcp-node-worker-02',
-          isHealthy: true,
-          statusText: 'Healthy (Passing 2/2)',
-          srvRecord: `_${normalized}._tcp.service.consul. 300 IN SRV 1 1 8002 ${normalized}.node.gcp`,
+          instances: mapped,
+          passingOnly: filterPassing,
+          queriedAt: new Date().toLocaleTimeString(),
         });
+
+        if (mapped.length > 0) {
+          showToast(`Consul resolved ${mapped.length} instance(s) for "${normalized}"`, 'success');
+        } else {
+          showToast(
+            filterPassing
+              ? `No healthy (?passing=true) instances found for "${normalized}"`
+              : `No registered instances found for "${normalized}"`,
+            'info'
+          );
+        }
+      } catch (err: any) {
+        setDiscoveryResult(null);
+        setDiscoveryError(err.message || 'Consul discovery query failed.');
+        showToast(err.message || 'Discovery failed', 'error');
       } finally {
         setIsResolving(false);
       }
     },
-    [cloudPref, showToast]
+    [cloudPref, passingOnly, showToast]
   );
 
   useEffect(() => {
-    performDiscovery('Payment Service', 'any');
-    fetchHealthStats();
-    const interval = setInterval(fetchHealthStats, 5000);
+    performDiscovery('payment-service', 'any', false);
+    fetchLiveMetadata();
+    const interval = setInterval(fetchLiveMetadata, 10000);
     return () => clearInterval(interval);
-  }, [fetchHealthStats, performDiscovery]);
+  }, [fetchLiveMetadata, performDiscovery]);
 
-  const selectService = (name: string, provider: string) => {
-    setQuery(name);
+  const selectQuickResolver = (svcName: string, provider: string) => {
+    setQuery(svcName);
     setCloudPref(provider);
-    performDiscovery(name, provider);
-  };
-
-  const triggerProbe = () => {
-    setIsProbing(true);
-    showToast('Executing HTTP health probe against live service instances...', 'info');
-    setTimeout(() => {
-      setIsProbing(false);
-      showToast('Probe check complete: 2 healthy nodes verified.', 'success');
-      fetchHealthStats();
-    }, 1200);
+    performDiscovery(svcName, provider, passingOnly);
   };
 
   const copySnippet = () => {
-    const snippet = `const consul = require('consul')({ host: '127.0.0.1', port: 8500 });
+    const snippet = `// Dynamic Cross-Cloud Discovery on AWS User Service
+const consulUrl = process.env.CONSUL_URL || 'http://localhost:8500';
+const res = await axios.get(\`\${consulUrl}/v1/health/service/payment-service?passing=true\`);
+const instances = res.data || [];
+if (!instances.length) throw new Error('No healthy payment-service instance in Consul');
 
-app.get('/api/checkout', async (req, res) => {
-  try {
-    const instances = await consul.health.service({
-      service: 'payment-service',
-      passing: true
-    });
-    if (!instances.length) {
-      return res.status(503).json({ error: 'No healthy payment nodes resolved' });
-    }
-    const targetUrl = \`http://\${instances[0].Service.Address}:\${instances[0].Service.Port}/pay\`;
-    res.json({ routedTo: targetUrl, status: 'PROXIED' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});`;
+const target = instances[0].Service;
+const paymentUrl = \`http://\${target.Address}:\${target.Port}/api/payments/process\`;
+await axios.post(paymentUrl, { userId: 'usr_101', amount: 10, currency: 'USD' });`;
+
     navigator.clipboard.writeText(snippet).then(() => {
-      showToast('Client snippet copied to clipboard!', 'success');
+      showToast('Cross-cloud discovery snippet copied to clipboard!', 'success');
     });
   };
 
-  const totalChecks = passingChecks + warningChecks + criticalChecks;
-  const operationalPct = totalChecks > 0 ? ((passingChecks / totalChecks) * 100).toFixed(1) : '100.0';
+  const totalChecks =
+    passingChecks !== null && warningChecks !== null && criticalChecks !== null
+      ? passingChecks + warningChecks + criticalChecks
+      : null;
+  const operationalPct =
+    totalChecks && passingChecks !== null ? ((passingChecks / totalChecks) * 100).toFixed(1) : null;
 
   return (
     <div className="flex flex-col w-full gap-space-lg">
-      {/* Breadcrumb Header */}
+      {/* Header */}
       <div className="flex flex-col gap-space-xs">
         <div className="flex items-center gap-space-sm text-secondary font-code-sm text-code-sm uppercase tracking-wider">
-          <span>Consul Catalog Engine</span>
+          <span>Consul Discovery Engine</span>
           <span>/</span>
-          <span>Mesh v1.20.0</span>
-          <span>/</span>
-          <span className="text-primary font-medium">Resolution Layer</span>
+          <span className="text-primary font-medium">/v1/health/service</span>
         </div>
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
           <div>
             <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight">
-              Service Discovery &amp; Health Monitoring
+              Dynamic Service Discovery Explorer
             </h1>
             <p className="font-body-lg text-body-lg text-secondary mt-1">
-              Resolve cross-cloud microservice endpoints dynamically using Consul DNS and HTTP API.
+              Query live instances via backend Consul proxy and inspect healthy discovery exclusion in real time.
             </p>
           </div>
-          <div className="flex items-center gap-space-sm">
-            <div className="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-surface-container-low shadow-sm">
-              <span className="material-symbols-outlined text-[16px] text-tertiary">lock_reset</span>
-              <span className="font-code-sm text-code-sm text-secondary">WAN Catalog Synced</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
-            </div>
-            <div className="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-surface-container shadow-sm">
-              <span className="material-symbols-outlined text-[16px] text-primary">dns</span>
-              <span className="font-code-sm text-code-sm text-on-surface">Port: 8600 (DNS)</span>
-            </div>
-          </div>
+          <button
+            onClick={fetchLiveMetadata}
+            className="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md self-start lg:self-auto"
+          >
+            <span className={`material-symbols-outlined text-[18px] text-primary ${isRefreshing ? 'animate-spin' : ''}`}>
+              refresh
+            </span>
+            <span>Refresh Discovery State</span>
+          </button>
         </div>
       </div>
 
-      {/* Dynamic Service Discovery Engine Card */}
-      <section className="flex flex-col gap-space-md">
-        <div className="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-lg">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
-            <div className="flex items-start gap-space-md">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-                <span className="material-symbols-outlined text-[24px]">radar</span>
-              </div>
-              <div className="flex flex-col">
-                <h2 className="font-headline-md text-headline-md text-on-surface">Dynamic Service Discovery Engine</h2>
-                <p className="font-body-md text-body-md text-secondary">
-                  Query the multi-cloud Consul catalog to discover active instances, evaluate failover routing, and resolve healthy endpoints.
-                </p>
-              </div>
+      {/* Dynamic Service Discovery Query Box */}
+      <section className="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+        <div className="flex flex-col gap-space-sm bg-surface-container-low/60 p-space-md rounded-xl">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-space-sm items-center">
+            <div className="relative md:col-span-5">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-secondary text-[20px]">
+                search
+              </span>
+              <input
+                className="w-full bg-surface-container-lowest pl-10 pr-space-md py-2.5 rounded-lg text-on-surface font-body-md text-body-md placeholder:text-secondary shadow-sm"
+                placeholder="Enter service name (e.g. payment-service)..."
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    performDiscovery(query, cloudPref, passingOnly);
+                  }
+                }}
+              />
             </div>
-            <div className="flex items-center gap-space-xs px-space-sm py-space-xs rounded-full bg-surface-container-low text-secondary font-code-sm text-code-sm">
-              <span className="material-symbols-outlined text-[16px] text-primary">speed</span>
-              <span>HTTP API /v1/health/service</span>
-            </div>
-          </div>
 
-          {/* Discovery Inputs */}
-          <div className="flex flex-col gap-space-sm bg-surface-container-low/60 p-space-md rounded-xl">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-space-sm items-center">
-              <div className="relative md:col-span-6">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-secondary text-[20px]">
-                  search
+            <div className="md:col-span-2">
+              <select
+                className="w-full bg-surface-container-lowest px-space-sm py-2.5 rounded-lg text-on-surface font-body-md text-body-md shadow-sm"
+                value={cloudPref}
+                onChange={(e) => setCloudPref(e.target.value)}
+              >
+                <option value="any">Any Cloud</option>
+                <option value="aws">AWS Only</option>
+                <option value="azure">AZURE Only</option>
+                <option value="gcp">GCP Only</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2 flex items-center gap-2 bg-surface-container-lowest px-3 py-2.5 rounded-lg shadow-sm">
+              <input
+                id="passing-only-toggle"
+                type="checkbox"
+                checked={passingOnly}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setPassingOnly(checked);
+                  performDiscovery(query, cloudPref, checked);
+                }}
+                className="w-4 h-4 text-primary rounded"
+              />
+              <label htmlFor="passing-only-toggle" className="font-code-sm text-code-sm text-on-surface cursor-pointer">
+                ?passing only
+              </label>
+            </div>
+
+            <div className="md:col-span-3">
+              <button
+                disabled={isResolving}
+                className="w-full flex items-center justify-center gap-space-xs px-space-md py-2.5 bg-primary-container text-on-primary-container font-label-lg text-label-lg rounded-lg shadow-sm hover:bg-primary transition-all disabled:opacity-50"
+                onClick={() => performDiscovery(query, cloudPref, passingOnly)}
+              >
+                <span className={`material-symbols-outlined text-[18px] ${isResolving ? 'animate-spin' : ''}`}>
+                  {isResolving ? 'refresh' : 'travel_explore'}
                 </span>
-                <input
-                  className="w-full bg-surface-container-lowest pl-10 pr-space-md py-2.5 rounded-lg text-on-surface font-body-md text-body-md placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary-container shadow-sm"
-                  placeholder="Enter service name (e.g. Payment Service)..."
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      performDiscovery(query, cloudPref);
-                    }
-                  }}
-                />
-              </div>
-              <div className="md:col-span-3">
-                <select
-                  className="w-full bg-surface-container-lowest px-space-md py-2.5 rounded-lg text-on-surface font-body-md text-body-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container"
-                  value={cloudPref}
-                  onChange={(e) => setCloudPref(e.target.value)}
-                >
-                  <option value="any">Any Cloud (Nearest)</option>
-                  <option value="aws">AWS Only</option>
-                  <option value="gcp">GCP Only</option>
-                  <option value="azure">Azure Only</option>
-                </select>
-              </div>
-              <div className="md:col-span-3 flex items-center gap-space-xs">
-                <button
-                  disabled={isResolving}
-                  className="w-full flex items-center justify-center gap-space-xs px-space-md py-2.5 bg-primary-container text-on-primary-container font-label-lg text-label-lg rounded-lg shadow-sm hover:bg-primary transition-all disabled:opacity-50"
-                  onClick={() => performDiscovery(query, cloudPref)}
-                >
-                  <span className={`material-symbols-outlined text-[18px] ${isResolving ? 'animate-spin' : ''}`}>
-                    {isResolving ? 'refresh' : 'travel_explore'}
-                  </span>
-                  <span>{isResolving ? 'Resolving...' : 'Discover Service'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Resolvers */}
-            <div className="flex flex-wrap items-center gap-space-xs pt-space-xs">
-              <span className="font-code-sm text-code-sm text-secondary">Quick Resolvers:</span>
-              <button
-                className="px-space-sm py-0.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors font-code-sm text-code-sm flex items-center gap-1"
-                onClick={() => selectService('Payment Service', 'gcp')}
-              >
-                <span>Payment Service</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
-              </button>
-              <button
-                className="px-space-sm py-0.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors font-code-sm text-code-sm flex items-center gap-1"
-                onClick={() => selectService('Order Service', 'azure')}
-              >
-                <span>Order Service</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-error"></span>
-              </button>
-              <button
-                className="px-space-sm py-0.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors font-code-sm text-code-sm flex items-center gap-1"
-                onClick={() => selectService('User Service', 'aws')}
-              >
-                <span>User Service</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                <span>{isResolving ? 'Resolving...' : 'Discover Service'}</span>
               </button>
             </div>
           </div>
 
-          {/* Discovered Result Card */}
-          {discoveryResult && (
-            <div className="flex flex-col gap-space-md bg-surface-container-low rounded-xl p-space-md shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-space-sm pb-space-xs">
-                <div className="flex items-center gap-space-sm">
-                  <div className="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[20px]">hub</span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-space-xs">
-                      <span className="font-headline-md text-headline-md text-on-surface">Discovery Result:</span>
-                      <span className="font-code-md text-code-md text-primary font-medium">
-                        {discoveryResult.serviceName}.service.consul
-                      </span>
-                    </div>
-                    <span className="font-code-sm text-code-sm text-secondary">
-                      Catalog Node: {discoveryResult.node}
-                    </span>
-                  </div>
-                </div>
-                <div
-                  className={`flex items-center gap-space-xs px-space-sm py-1 rounded-full font-code-sm text-code-sm ${
-                    discoveryResult.isHealthy
-                      ? 'bg-tertiary-fixed text-on-tertiary-fixed'
-                      : 'bg-error-container text-on-error-container'
-                  }`}
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span
-                      className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                        discoveryResult.isHealthy ? 'bg-tertiary' : 'bg-error'
-                      }`}
-                    ></span>
-                    <span
-                      className={`relative inline-flex rounded-full h-2 w-2 ${
-                        discoveryResult.isHealthy ? 'bg-tertiary' : 'bg-error'
-                      }`}
-                    ></span>
-                  </span>
-                  <span className="font-semibold uppercase tracking-wide">
-                    {discoveryResult.isHealthy ? 'DISCOVERED (1 Healthy Instance)' : 'DISCOVERED (Unhealthy Instance)'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-sm">
-                <div className="bg-surface-container-lowest p-space-sm rounded-lg flex flex-col justify-between shadow-sm">
-                  <span className="font-code-sm text-code-sm text-secondary uppercase">Service IP &amp; Port</span>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="font-code-md text-code-md text-on-surface font-semibold">
-                      {discoveryResult.address}:{discoveryResult.port}
-                    </span>
-                    <button
-                      className="text-secondary hover:text-primary p-1 rounded hover:bg-surface-container transition-colors"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${discoveryResult.address}:${discoveryResult.port}`);
-                        showToast('IP:port copied to clipboard!', 'success');
-                      }}
-                      title="Copy IP"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                    </button>
-                  </div>
-                  <span className="font-code-sm text-code-sm text-secondary mt-1">TCP / HTTP 1.1</span>
-                </div>
-
-                <div className="bg-surface-container-lowest p-space-sm rounded-lg flex flex-col justify-between shadow-sm">
-                  <span className="font-code-sm text-code-sm text-secondary uppercase">Cloud Provider</span>
-                  <div className="flex items-center gap-space-xs mt-1">
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        discoveryResult.provider === 'AWS'
-                          ? 'bg-primary'
-                          : discoveryResult.provider === 'GCP'
-                          ? 'bg-tertiary'
-                          : 'bg-primary'
-                      }`}
-                    ></span>
-                    <span className="font-code-sm text-code-sm uppercase font-semibold text-tertiary">
-                      {discoveryResult.provider}
-                    </span>
-                  </div>
-                  <span className="font-code-sm text-code-sm text-secondary truncate mt-1">
-                    Zone: {discoveryResult.provider.toLowerCase()}-primary
-                  </span>
-                </div>
-
-                <div className="bg-surface-container-lowest p-space-sm rounded-lg flex flex-col justify-between shadow-sm">
-                  <span className="font-code-sm text-code-sm text-secondary uppercase">Worker Node</span>
-                  <span className="font-code-md text-code-md text-on-surface font-medium mt-1 truncate">
-                    {discoveryResult.node}
-                  </span>
-                  <span className="font-code-sm text-code-sm text-secondary mt-1">Agent ID: c7f9-410a</span>
-                </div>
-
-                <div className="bg-surface-container-lowest p-space-sm rounded-lg flex flex-col justify-between shadow-sm">
-                  <span className="font-code-sm text-code-sm text-secondary uppercase">Health Status</span>
-                  <div className="flex items-center gap-space-xs mt-1">
-                    <span
-                      className={`w-2 h-2 rounded-full ${discoveryResult.isHealthy ? 'bg-tertiary' : 'bg-error'}`}
-                    ></span>
-                    <span
-                      className={`font-label-md text-label-md font-semibold ${
-                        discoveryResult.isHealthy ? 'text-tertiary' : 'text-error'
-                      }`}
-                    >
-                      {discoveryResult.statusText}
-                    </span>
-                  </div>
-                  <span className="font-code-sm text-code-sm text-secondary mt-1">1.4ms via Consul HTTP API</span>
-                </div>
-              </div>
-
-              {/* SRV Record */}
-              <div className="bg-surface-container-lowest rounded-lg p-space-sm flex flex-col gap-space-xs shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-space-xs">
-                    <span className="material-symbols-outlined text-[16px] text-primary">lan</span>
-                    <span className="font-code-sm text-code-sm text-secondary uppercase font-semibold">
-                      Consul DNS SRV Record
-                    </span>
-                  </div>
-                  <span className="font-code-sm text-code-sm text-secondary">TTL 300s</span>
-                </div>
-                <div className="bg-surface-container-high/30 p-space-xs rounded font-code-sm text-code-sm text-on-surface select-all overflow-x-auto">
-                  {discoveryResult.srvRecord}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Accordion: Order Service Query Inspection */}
-          <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm shadow-sm">
-            <div
-              className="flex items-center justify-between cursor-pointer"
-              onClick={() => setIsAccordionOpen(!isAccordionOpen)}
+          {/* Quick Resolvers */}
+          <div className="flex flex-wrap items-center gap-space-xs pt-space-xs">
+            <span className="font-code-sm text-code-sm text-secondary">Quick Resolvers:</span>
+            <button
+              className="px-space-sm py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors font-code-sm text-code-sm flex items-center gap-1.5"
+              onClick={() => selectQuickResolver('payment-service', 'any')}
             >
-              <div className="flex items-center gap-space-sm">
-                <span className="material-symbols-outlined text-error text-[20px]">warning</span>
-                <div>
-                  <span className="font-headline-md text-headline-md text-on-surface">
-                    Order Service Query Inspection
-                  </span>
-                  <span className="font-code-sm text-code-sm text-secondary block">order-service.service.consul</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-space-sm">
-                <span className="px-space-xs py-0.5 rounded bg-error-container text-on-error-container font-code-sm text-code-sm uppercase font-semibold">
-                  Excluded from Routing Pool
+              <span>payment-service (Azure)</span>
+            </button>
+            <button
+              className="px-space-sm py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors font-code-sm text-code-sm flex items-center gap-1.5"
+              onClick={() => selectQuickResolver('user-service', 'any')}
+            >
+              <span>user-service (AWS)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Discovery Error */}
+        {discoveryError && (
+          <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex items-center gap-2 font-code-sm text-code-sm">
+            <span className="material-symbols-outlined text-[18px]">error</span>
+            <span>{discoveryError}</span>
+          </div>
+        )}
+
+        {/* Discovered Results */}
+        {discoveryResult && !discoveryError && (
+          <div className="flex flex-col gap-space-md bg-surface-container-low rounded-xl p-space-md">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-headline-md text-headline-md text-on-surface">
+                  Query: <code className="text-primary">{discoveryResult.serviceName}</code>
                 </span>
-                <span
-                  className={`material-symbols-outlined text-secondary transition-transform ${
-                    isAccordionOpen ? 'rotate-180' : ''
-                  }`}
-                >
-                  expand_more
+                <span className="font-code-sm text-code-sm text-secondary">
+                  ({discoveryResult.passingOnly ? '?passing=true filter active' : 'All registered states'})
                 </span>
               </div>
+              <span className="font-code-sm text-code-sm text-secondary">
+                Resolved {discoveryResult.instances.length} instance(s) at {discoveryResult.queriedAt}
+              </span>
             </div>
 
-            {isAccordionOpen && (
-              <div className="flex flex-col gap-space-sm pt-space-xs">
-                <div className="p-space-sm rounded-lg bg-surface-container-lowest flex flex-col md:flex-row md:items-center justify-between gap-space-sm shadow-sm">
-                  <div className="flex flex-col gap-space-xs">
-                    <div className="flex items-center gap-space-xs">
-                      <span className="font-code-sm text-code-sm text-secondary">Discovered Address:</span>
-                      <span className="font-code-md text-code-md text-on-surface font-semibold">10.0.1.30:8003</span>
-                      <span className="px-space-xs py-0.5 rounded bg-surface-container text-secondary font-code-sm text-code-sm">
-                        Azure East US 2
+            {discoveryResult.instances.length === 0 ? (
+              <div className="p-space-md rounded-lg bg-surface-container-lowest text-center text-secondary font-body-sm text-body-sm">
+                {discoveryResult.passingOnly
+                  ? `0 passing instances returned for "${discoveryResult.serviceName}". If registered and failing, Consul excludes it from ?passing queries.`
+                  : `No registered instances found for "${discoveryResult.serviceName}" in Consul.`}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-space-sm">
+                {discoveryResult.instances.map((inst) => (
+                  <div key={inst.id} className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="font-headline-md text-headline-md text-on-surface font-semibold">
+                          {inst.name} <span className="font-code-sm text-secondary font-normal">({inst.id})</span>
+                        </div>
+                        <div className="font-code-sm text-code-sm text-secondary">
+                          Node: {inst.node} • Datacenter: {inst.datacenter}
+                        </div>
+                      </div>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold ${
+                          inst.isHealthy
+                            ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                            : 'bg-error-container text-on-error-container'
+                        }`}
+                      >
+                        {inst.status}
                       </span>
                     </div>
-                    <p className="font-code-sm text-code-sm text-error">
-                      STATUS: UNHEALTHY • Consul agent marked critical. Service excluded from healthy DNS round-robin and upstream reverse proxies.
-                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-space-sm font-code-sm text-code-sm">
+                      <div className="bg-surface-container-low p-2.5 rounded-lg flex items-center justify-between">
+                        <div>
+                          <span className="text-secondary block text-[11px]">Address &amp; Port</span>
+                          <span className="text-on-surface font-semibold select-all">
+                            {inst.address}:{inst.port}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${inst.address}:${inst.port}`);
+                            showToast('Endpoint copied to clipboard!', 'success');
+                          }}
+                          className="text-secondary hover:text-primary"
+                          title="Copy endpoint"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                        </button>
+                      </div>
+                      <div className="bg-surface-container-low p-2.5 rounded-lg">
+                        <span className="text-secondary block text-[11px]">Cloud Provider</span>
+                        <span className="text-primary font-semibold">{inst.provider}</span>
+                      </div>
+                      <div className="bg-surface-container-low p-2.5 rounded-lg">
+                        <span className="text-secondary block text-[11px]">Tags</span>
+                        <span className="text-on-surface truncate block">{inst.tags.join(', ') || 'None'}</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-surface-container-high/30 p-2 rounded font-code-sm text-code-sm text-on-surface overflow-x-auto">
+                      DNS SRV: {inst.srvRecord}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-space-xs">
-                    <button
-                      className="px-space-sm py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors font-label-md text-label-md"
-                      onClick={() => showToast('Diagnostics: Azure Node order-01 returning HTTP 503 Service Unavailable.')}
-                    >
-                      Inspect Azure Node
-                    </button>
-                    <button
-                      className="px-space-sm py-1 rounded bg-error text-on-error font-label-md text-label-md hover:opacity-90 transition-opacity"
-                      onClick={() => showToast('Draining node azure-vm-eastus-03 from routing catalog.', 'warning')}
-                    >
-                      Drain Node
-                    </button>
-                  </div>
-                </div>
+                ))}
               </div>
             )}
           </div>
-        </div>
-      </section>
+        )}
 
-      {/* Real-Time Health Monitoring Section */}
-      <section className="flex flex-col gap-space-md">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
-          <div className="flex items-center gap-space-sm">
-            <div className="w-3 h-3 rounded-full bg-tertiary"></div>
-            <h2 className="font-headline-lg text-headline-lg text-on-surface">Real-Time Health Monitoring</h2>
-          </div>
-          <div className="flex items-center gap-space-md">
-            <div className="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container shadow-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
+        {/* Payment Service ?passing Exclusion Comparison Box */}
+        {paymentHealth && (
+          <div
+            className={`rounded-xl p-space-md flex flex-col gap-space-xs ${
+              paymentHealth.excludedFromDiscovery
+                ? 'bg-error-container/30 border border-error/30'
+                : 'bg-surface-container-low'
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className={`material-symbols-outlined text-[20px] ${paymentHealth.excludedFromDiscovery ? 'text-error' : 'text-tertiary'}`}>
+                  {paymentHealth.excludedFromDiscovery ? 'warning' : 'verified_user'}
+                </span>
+                <span className="font-headline-md text-headline-md text-on-surface">
+                  Azure Payment Service Discovery Gate (<code>/v1/health/service/payment-service?passing</code>)
+                </span>
+              </div>
+              <span
+                className={`px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold ${
+                  paymentHealth.healthState === 'PASSING'
+                    ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                    : paymentHealth.healthState === 'CRITICAL'
+                    ? 'bg-error-container text-on-error-container'
+                    : 'bg-surface-container text-secondary'
+                }`}
+              >
+                {paymentHealth.healthState}
               </span>
-              <span className="font-code-sm text-code-sm text-on-surface font-medium">Auto-refresh: 5s (Live)</span>
             </div>
-            <button
-              className="p-1 rounded-lg bg-surface-container text-secondary hover:text-on-surface hover:bg-surface-container-highest transition-colors"
-              onClick={fetchHealthStats}
-              title="Force Refresh Catalog"
-            >
-              <span className="material-symbols-outlined text-[18px]">refresh</span>
-            </button>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Registered: <strong>{paymentHealth.totalRegistered}</strong> • Passing Discovery Pool: <strong>{paymentHealth.passingCount}</strong>
+              {paymentHealth.excludedFromDiscovery && paymentHealth.totalRegistered > 0 && (
+                <span className="text-error font-semibold ml-2">
+                  — Excluded from healthy discovery! AWS User Service will safely reject transactions until Azure Payment Service recovers.
+                </span>
+              )}
+            </p>
           </div>
-        </div>
+        )}
+      </section>
 
-        {/* 4 Health Stat Cards */}
+      {/* Live Health Metrics Summary & Dynamic Catalog Cards */}
+      <section className="flex flex-col gap-space-md">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md">
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="font-label-md text-label-md text-secondary uppercase">Passing Checks</span>
-              <span className="material-symbols-outlined text-tertiary text-[20px]">check_circle</span>
-            </div>
-            <div className="mt-2 flex items-baseline gap-space-xs">
-              <span className="font-headline-xl text-headline-xl text-on-surface font-bold">{passingChecks}</span>
-              <span className="font-code-sm text-code-sm text-tertiary font-medium">{operationalPct}% Operational</span>
-            </div>
-            <div className="w-full bg-surface-container-low h-1.5 rounded-full mt-space-sm overflow-hidden">
-              <div className="bg-tertiary h-full rounded-full" style={{ width: `${operationalPct}%` }}></div>
+          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
+            <span className="font-label-md text-label-md text-secondary uppercase">Passing Checks</span>
+            <div className="mt-2 font-headline-xl text-headline-xl text-on-surface font-bold">
+              {passingChecks ?? 'Unknown'}
             </div>
           </div>
-
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="font-label-md text-label-md text-secondary uppercase">Warning Checks</span>
-              <span className="material-symbols-outlined text-secondary text-[20px]">warning_amber</span>
-            </div>
-            <div className="mt-2 flex items-baseline gap-space-xs">
-              <span className="font-headline-xl text-headline-xl text-on-surface font-bold">{warningChecks}</span>
-              <span className="font-code-sm text-code-sm text-secondary">Nominal drift</span>
-            </div>
-            <div className="w-full bg-surface-container-low h-1.5 rounded-full mt-space-sm overflow-hidden">
-              <div className="bg-secondary h-full rounded-full" style={{ width: '0%' }}></div>
+          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
+            <span className="font-label-md text-label-md text-secondary uppercase">Warning Checks</span>
+            <div className="mt-2 font-headline-xl text-headline-xl text-on-surface font-bold">
+              {warningChecks ?? 'Unknown'}
             </div>
           </div>
-
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="font-label-md text-label-md text-secondary uppercase">Critical Checks</span>
-              <span className="material-symbols-outlined text-error text-[20px]">error</span>
-            </div>
-            <div className="mt-2 flex items-baseline gap-space-xs">
-              <span className="font-headline-xl text-headline-xl text-error font-bold">{criticalChecks}</span>
-              <span className="font-code-sm text-code-sm text-error font-medium">Alerting Active</span>
-            </div>
-            <div className="w-full bg-surface-container-low h-1.5 rounded-full mt-space-sm overflow-hidden">
-              <div className="bg-error h-full rounded-full" style={{ width: criticalChecks > 0 ? '25%' : '0%' }}></div>
+          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
+            <span className="font-label-md text-label-md text-secondary uppercase">Critical Checks</span>
+            <div className="mt-2 font-headline-xl text-headline-xl text-error font-bold">
+              {criticalChecks ?? 'Unknown'}
             </div>
           </div>
-
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="font-label-md text-label-md text-secondary uppercase">Flapping Rate</span>
-              <span className="material-symbols-outlined text-primary text-[20px]">monitoring</span>
-            </div>
-            <div className="mt-2 flex items-baseline gap-space-xs">
-              <span className="font-headline-xl text-headline-xl text-on-surface font-bold">0.0%</span>
-              <span className="font-code-sm text-code-sm text-tertiary">Stable Topology</span>
-            </div>
-            <div className="w-full bg-surface-container-low h-1.5 rounded-full mt-space-sm overflow-hidden">
-              <div className="bg-primary h-full rounded-full" style={{ width: '2%' }}></div>
+          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
+            <span className="font-label-md text-label-md text-secondary uppercase">Healthy Ratio</span>
+            <div className="mt-2 font-headline-xl text-headline-xl text-on-surface font-bold">
+              {operationalPct !== null ? `${operationalPct}%` : 'Unknown'}
             </div>
           </div>
         </div>
 
-        {/* Detailed Service Cards */}
+        {/* Live Catalog Instances Cards */}
         <div className="grid grid-cols-1 gap-space-md">
-          {/* User Service */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm hover:shadow-md transition-shadow">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
-              <div className="flex items-center gap-space-sm">
-                <div className="w-3 h-3 rounded-full bg-tertiary shrink-0"></div>
-                <div>
-                  <div className="flex items-center gap-space-xs">
-                    <span className="font-headline-md text-headline-md text-on-surface font-semibold">User Service</span>
-                    <span className="font-code-sm text-code-sm text-secondary">(user-01)</span>
+          {catalogEntries.length === 0 ? (
+            <div className="bg-surface-container-lowest rounded-xl p-space-md text-center text-secondary font-body-sm text-body-sm">
+              No live instances reported in Consul catalog.
+            </div>
+          ) : (
+            catalogEntries.map((entry) => (
+              <div key={entry.id} className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="font-headline-md text-headline-md text-on-surface font-semibold">{entry.name}</span>
+                    <span className="font-code-sm text-code-sm text-secondary ml-2">({entry.id})</span>
+                    <div className="font-code-sm text-code-sm text-secondary">
+                      Node: {entry.node} • Datacenter: {entry.datacenter} • Provider: {entry.provider} ({entry.region})
+                    </div>
                   </div>
-                  <span className="font-code-sm text-code-sm text-secondary">Node: aws-ec2-worker-101 • Datacenter: aws-us-east-1</span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full font-code-sm text-code-sm font-semibold ${
+                      entry.healthStatus === 'PASSING'
+                        ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                        : 'bg-error-container text-on-error-container'
+                    }`}
+                  >
+                    {entry.healthStatus}
+                  </span>
+                </div>
+                <div className="bg-surface-container-low p-2 rounded font-code-sm text-code-sm text-on-surface break-all">
+                  Endpoint: {entry.address}:{entry.port} • Check Output: {entry.lastCheckOutput}
                 </div>
               </div>
-              <div className="flex items-center gap-space-xs">
-                <span className="px-space-xs py-0.5 rounded bg-surface-container text-secondary font-code-sm text-code-sm uppercase font-semibold">
-                  AWS us-east-1
-                </span>
-                <span className="px-space-sm py-1 rounded bg-tertiary-fixed text-on-tertiary-fixed font-code-sm text-code-sm uppercase font-bold">
-                  PASSING • HTTP 200 OK
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-space-xs bg-surface-container-low p-space-sm rounded-lg font-code-sm text-code-sm">
-              <div>
-                <span className="text-secondary block">Endpoint:</span>
-                <span className="text-on-surface font-medium select-all">http://10.0.1.10:8001/health</span>
-              </div>
-              <div>
-                <span className="text-secondary block">Telemetry:</span>
-                <span className="text-on-surface">Last Check: 3s ago • Latency: 24ms</span>
-              </div>
-              <div>
-                <span className="text-secondary block">Check Type:</span>
-                <span className="text-on-surface">HTTP GET (Interval: 10s, Timeout: 2s)</span>
-              </div>
-            </div>
-            <div className="bg-surface-container-high/40 rounded-lg p-space-xs overflow-x-auto">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-code-sm text-code-sm text-secondary uppercase">Check Output Stream</span>
-                <span className="font-code-sm text-code-sm text-tertiary">exit: 0</span>
-              </div>
-              <code className="font-code-sm text-code-sm text-on-surface select-all block whitespace-pre">
-                HTTP GET /health: {JSON.stringify({ status: 'UP', database: 'connected', aws_region: 'us-east-1' })}
-              </code>
-            </div>
-          </div>
-
-          {/* Payment Service */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm hover:shadow-md transition-shadow">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
-              <div className="flex items-center gap-space-sm">
-                <div className="w-3 h-3 rounded-full bg-tertiary shrink-0"></div>
-                <div>
-                  <div className="flex items-center gap-space-xs">
-                    <span className="font-headline-md text-headline-md text-on-surface font-semibold">Payment Service</span>
-                    <span className="font-code-sm text-code-sm text-secondary">(payment-01)</span>
-                  </div>
-                  <span className="font-code-sm text-code-sm text-secondary">Node: gcp-node-worker-02 • Datacenter: gcp-us-central1</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-space-xs">
-                <span className="px-space-xs py-0.5 rounded bg-surface-container text-secondary font-code-sm text-code-sm uppercase font-semibold">
-                  GCP us-central1
-                </span>
-                <span className="px-space-sm py-1 rounded bg-tertiary-fixed text-on-tertiary-fixed font-code-sm text-code-sm uppercase font-bold">
-                  PASSING • HTTP 200 OK
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-space-xs bg-surface-container-low p-space-sm rounded-lg font-code-sm text-code-sm">
-              <div>
-                <span className="text-secondary block">Endpoint:</span>
-                <span className="text-on-surface font-medium select-all">http://127.0.0.1:8001/health</span>
-              </div>
-              <div>
-                <span className="text-secondary block">Telemetry:</span>
-                <span className="text-on-surface">Last Check: 1s ago • Latency: 19ms</span>
-              </div>
-              <div>
-                <span className="text-secondary block">Check Type:</span>
-                <span className="text-on-surface">HTTP GET (Interval: 5s, Timeout: 1.5s)</span>
-              </div>
-            </div>
-            <div className="bg-surface-container-high/40 rounded-lg p-space-xs overflow-x-auto">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-code-sm text-code-sm text-secondary uppercase">Check Output Stream</span>
-                <span className="font-code-sm text-code-sm text-tertiary">exit: 0</span>
-              </div>
-              <code className="font-code-sm text-code-sm text-on-surface select-all block whitespace-pre">
-                HTTP GET /health: {JSON.stringify({ status: 'UP', stripe_gateway: 'healthy', gcp_zone: 'us-central1-a' })}
-              </code>
-            </div>
-          </div>
-
-          {/* Order Service */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm bg-error-container/10">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
-              <div className="flex items-center gap-space-sm">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-error"></span>
-                </span>
-                <div>
-                  <div className="flex items-center gap-space-xs">
-                    <span className="font-headline-md text-headline-md text-on-surface font-semibold">Order Service</span>
-                    <span className="font-code-sm text-code-sm text-error font-medium">(order-01)</span>
-                  </div>
-                  <span className="font-code-sm text-code-sm text-secondary">Node: azure-vm-eastus-03 • Datacenter: azure-eastus-2</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-space-xs">
-                <span className="px-space-xs py-0.5 rounded bg-surface-container text-secondary font-code-sm text-code-sm uppercase font-semibold">
-                  Azure eastus-2
-                </span>
-                <span className="px-space-sm py-1 rounded bg-error text-on-error font-code-sm text-code-sm uppercase font-bold">
-                  CRITICAL • HTTP 503 SERVICE UNAVAILABLE
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-space-xs bg-surface-container-low p-space-sm rounded-lg font-code-sm text-code-sm">
-              <div>
-                <span className="text-secondary block">Endpoint:</span>
-                <span className="text-on-surface font-medium select-all">http://10.0.1.30:8003/health</span>
-              </div>
-              <div>
-                <span className="text-secondary block">Telemetry:</span>
-                <span className="text-error font-medium">Last Check: 5s ago • TIMEOUT / 503</span>
-              </div>
-              <div>
-                <span className="text-secondary block">Routing Impact:</span>
-                <span className="text-error font-medium">Excluded from DNS Pool</span>
-              </div>
-            </div>
-            <div className="bg-error-container/30 rounded-lg p-space-xs overflow-x-auto">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-code-sm text-code-sm text-error uppercase font-semibold">Critical Diagnostic Output</span>
-                <span className="font-code-sm text-code-sm text-error font-semibold">exit: 1</span>
-              </div>
-              <code className="font-code-sm text-code-sm text-error select-all block whitespace-pre">
-                HTTP GET /health: Connection refused or unhealthy downstream dependency (cosmos-db-unreachable)
-              </code>
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-space-xs pt-space-xs">
-              <button
-                disabled={isProbing}
-                className="flex items-center gap-space-xs px-space-md py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors font-label-md text-label-md disabled:opacity-50"
-                onClick={triggerProbe}
-              >
-                <span className={`material-symbols-outlined text-[16px] ${isProbing ? 'animate-spin' : ''}`}>
-                  restart_alt
-                </span>
-                <span>{isProbing ? 'Probing...' : 'Trigger Probe Now'}</span>
-              </button>
-              <button
-                className="flex items-center gap-space-xs px-space-md py-1.5 rounded-lg bg-error text-on-error font-label-md text-label-md hover:opacity-90 transition-opacity"
-                onClick={() => showToast('Opening Azure East US 2 node diagnostics telemetry log...', 'info')}
-              >
-                <span className="material-symbols-outlined text-[16px]">troubleshoot</span>
-                <span>View Azure Diagnostics</span>
-              </button>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       </section>
 
-      {/* Express API Client Snippet */}
-      <section className="flex flex-col gap-space-sm">
-        <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
-            <div className="flex items-center gap-space-sm">
-              <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[20px]">code</span>
-              </div>
-              <div>
-                <h3 className="font-headline-md text-headline-md text-on-surface">Express Backend API Client Snippet</h3>
-                <p className="font-body-md text-body-md text-secondary">
-                  Discover healthy dynamic microservice instances in Node.js before forwarding client traffic.
-                </p>
-              </div>
-            </div>
-            <button
-              className="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors font-code-sm text-code-sm"
-              onClick={copySnippet}
-            >
-              <span className="material-symbols-outlined text-[16px]">content_copy</span>
-              <span>Copy Snippet</span>
-            </button>
+      {/* Discovery Code Snippet */}
+      <section className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-headline-md text-headline-md text-on-surface">AWS User Service Discovery Logic</h3>
+            <p className="font-body-sm text-body-sm text-secondary">
+              How AWS User Service dynamically queries Consul for Azure Payment Service before routing HTTP traffic.
+            </p>
           </div>
-          <div className="bg-inverse-surface rounded-xl p-space-md shadow-sm overflow-x-auto text-inverse-on-surface font-code-sm text-code-sm leading-relaxed">
-            <div className="flex items-center justify-between pb-space-sm text-inverse-primary/60 border-b border-surface-container-high/10 mb-space-sm">
-              <span>service-client.js (Express &amp; consul-node)</span>
-              <span>ESM / Async Await</span>
-            </div>
-            <pre className="select-all whitespace-pre font-mono">
-              <code>
-                <span className="text-tertiary-fixed">// Query Consul health catalog for passing instances only</span>{'\n'}
-                <span className="text-inverse-primary">const</span> consul = <span className="text-inverse-primary">require</span>(<span className="text-tertiary-fixed">'consul'</span>)({'{'} host: <span className="text-tertiary-fixed">'127.0.0.1'</span>, port: <span className="text-secondary-fixed">8500</span> {'}'});{'\n\n'}
-                app.<span className="text-inverse-primary">get</span>(<span className="text-tertiary-fixed">'/api/checkout'</span>, <span className="text-inverse-primary">async</span> (req, res) =&gt; {'{'}{'\n'}
-                {'  '}<span className="text-inverse-primary">try</span> {'{'}{'\n'}
-                {'    '}<span className="text-tertiary-fixed-dim">// Dynamic discovery filter ensures no unhealthy instances are routed to</span>{'\n'}
-                {'    '}<span className="text-inverse-primary">const</span> instances = <span className="text-inverse-primary">await</span> consul.health.<span className="text-primary-fixed">service</span>({'{'}{'\n'}
-                {'      '}service: <span className="text-tertiary-fixed">'payment-service'</span>,{'\n'}
-                {'      '}passing: <span className="text-secondary-fixed">true</span>{'\n'}
-                {'    '}{'}'});{'\n\n'}
-                {'    '}<span className="text-inverse-primary">if</span> (!instances.length) {'{'}{'\n'}
-                {'      '}<span className="text-inverse-primary">return</span> res.status(<span className="text-secondary-fixed">503</span>).json({'{'} error: <span className="text-tertiary-fixed">'No healthy payment nodes resolved'</span> {'}'});{'\n'}
-                {'    '}{'}'}{'\n\n'}
-                {'    '}<span className="text-tertiary-fixed-dim">// Format destination using dynamic Consul host:port resolution</span>{'\n'}
-                {'    '}<span className="text-inverse-primary">const</span> targetUrl = <span className="text-tertiary-fixed">{'`http://${instances[0].Service.Address}:${instances[0].Service.Port}/pay`'}</span>;{'\n'}
-                {'    '}<span className="text-tertiary-fixed-dim">// Forward request to resolved target...</span>{'\n'}
-                {'    '}res.json({'{'} routedTo: targetUrl, status: <span className="text-tertiary-fixed">'PROXIED'</span> {'}'});{'\n'}
-                {'  '}{'}'} <span className="text-inverse-primary">catch</span> (err) {'{'}{'\n'}
-                {'    '}res.status(<span className="text-secondary-fixed">500</span>).json({'{'} error: err.message {'}'});{'\n'}
-                {'  '}{'}'}{'\n'}
-                {'}'});
-              </code>
-            </pre>
-          </div>
+          <button
+            className="flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm"
+            onClick={copySnippet}
+          >
+            <span className="material-symbols-outlined text-[16px]">content_copy</span>
+            <span>Copy Snippet</span>
+          </button>
         </div>
+        <pre className="bg-inverse-surface rounded-xl p-space-md overflow-x-auto text-inverse-on-surface font-code-sm text-code-sm">
+          <code>{`const res = await axios.get(\`\${CONSUL_URL}/v1/health/service/payment-service?passing=true\`);
+const target = res.data[0].Service; // e.g. 10.8.0.2:8001 (WireGuard IP)
+await axios.post(\`http://\${target.Address}:\${target.Port}/api/payments/process\`, payload);`}</code>
+        </pre>
       </section>
     </div>
   );

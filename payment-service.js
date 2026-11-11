@@ -3,13 +3,15 @@ const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PAYMENT_PORT || 8001;
+const CLOUD_PROVIDER = process.env.CLOUD_PROVIDER || "AZURE";
+const CLOUD_REGION = process.env.CLOUD_REGION || "Central India";
 
 app.use(cors());
 app.use(express.json());
 
-// Request logger for simulated service
+// Request logger
 app.use((req, res, next) => {
-    console.log(`[PaymentService-Simulated] ${new Date().toISOString()} ${req.method} ${req.url}`);
+    console.log(`[PaymentService-${CLOUD_PROVIDER}] ${new Date().toISOString()} ${req.method} ${req.url}`);
     next();
 });
 
@@ -19,9 +21,11 @@ let isHealthy = true;
 app.get("/", (req, res) => {
     res.json({
         service: "payment-service",
-        cloudSimulation: "AWS (Simulated us-east-1)",
-        environment: "local-simulation",
-        note: "Simulated microservice for college mini-project demonstration. Not connected to real cloud infrastructure.",
+        cloud: CLOUD_PROVIDER,
+        region: CLOUD_REGION,
+        cloudSimulation: `${CLOUD_PROVIDER} (${CLOUD_REGION})`,
+        environment: process.env.NODE_ENV || "production",
+        note: "Simulated transaction processor for college mini-project demonstration (no real money processed).",
         status: isHealthy ? "UP" : "DOWN",
         isHealthy,
         endpoints: {
@@ -41,10 +45,11 @@ app.get("/health", (req, res) => {
         return res.status(503).json({
             status: "critical",
             service: "payment-service",
-            cloud: "AWS",
-            port: PORT,
+            cloud: CLOUD_PROVIDER,
+            region: CLOUD_REGION,
+            port: Number(PORT),
             timestamp: new Date().toISOString(),
-            error: "Simulated microservice failure injected for SSD Virtual Lab experiment.",
+            error: "Service failure injected via /simulate/unhealthy.",
             checks: {
                 httpListener: "FAILING",
                 ledgerDatabase: "DOWN (Simulated Timeout)",
@@ -56,8 +61,9 @@ app.get("/health", (req, res) => {
     res.status(200).json({
         status: "healthy",
         service: "payment-service",
-        cloud: "AWS",
-        port: PORT,
+        cloud: CLOUD_PROVIDER,
+        region: CLOUD_REGION,
+        port: Number(PORT),
         uptimeSeconds: Math.floor(process.uptime()),
         timestamp: new Date().toISOString(),
         checks: {
@@ -90,18 +96,19 @@ app.post("/api/payments/process", (req, res) => {
     }
 
     if (!isHealthy) {
-        console.log(`[PaymentService] Rejected payment for user ${userId}: Service is unhealthy (503).`);
+        console.log(`[PaymentService-${CLOUD_PROVIDER}] Rejected payment for user ${userId}: Service is unhealthy (503).`);
         return res.status(503).json({
             status: "error",
             error: "PAYMENT_SERVICE_UNAVAILABLE",
             service: "payment-service",
-            cloud: process.env.CLOUD_PROVIDER || "GCP",
+            cloud: CLOUD_PROVIDER,
+            region: CLOUD_REGION,
             message: "Payment backend is currently unhealthy (simulated outage)."
         });
     }
 
     const transactionId = `txn_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-    console.log(`[PaymentService] Processed payment of $${numAmount} for user ${userId}. Txn ID: ${transactionId}`);
+    console.log(`[PaymentService-${CLOUD_PROVIDER}] Processed payment of ${numAmount} ${currency || "USD"} for user ${userId}. Txn ID: ${transactionId}`);
 
     res.status(200).json({
         status: "success",
@@ -109,9 +116,10 @@ app.post("/api/payments/process", (req, res) => {
         userId: userId.trim(),
         amount: numAmount,
         currency: currency || "USD",
-        description: description || "Cross-cloud service fee",
+        description: description || "Dashboard demo payment",
         service: "payment-service",
-        cloud: process.env.CLOUD_PROVIDER || "GCP",
+        cloud: CLOUD_PROVIDER,
+        region: CLOUD_REGION,
         processedAt: new Date().toISOString(),
         message: "Payment processed successfully across clouds"
     });

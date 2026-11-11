@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import { Sidebar } from './components/Sidebar';
@@ -10,14 +10,16 @@ import { HealthMonitoring } from './pages/HealthMonitoring';
 import { Settings } from './pages/Settings';
 
 export const App: React.FC = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <ToastProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-surface text-on-surface">
-          <Sidebar />
-          <div className="pl-64">
-            <Header />
-            <main className="relative pt-14 w-full min-h-screen bg-surface px-space-lg py-space-lg">
+        <div className="min-h-screen bg-surface text-on-surface overflow-x-hidden">
+          <Sidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+          <div className="md:pl-64 transition-all min-w-0">
+            <Header onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)} />
+            <main className="relative pt-14 w-full max-w-full min-h-screen bg-surface px-3 sm:px-space-lg py-space-lg overflow-x-hidden">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/service-registry" element={<ServiceRegistry />} />
@@ -35,4 +37,3 @@ export const App: React.FC = () => {
 };
 
 export default App;
-
