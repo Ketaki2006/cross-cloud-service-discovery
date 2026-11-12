@@ -68,6 +68,21 @@ function detectWireGuardInterface() {
     return { hasWgIp, interfaces: wgIfaces };
 }
 
+function parseHostFromUrl(rawUrl, fallback = "127.0.0.1") {
+    try {
+        return new URL(rawUrl).hostname || fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function isLoopbackHost(hostOrUrl) {
+    const host = String(hostOrUrl || "").includes("://")
+        ? parseHostFromUrl(hostOrUrl, "")
+        : String(hostOrUrl || "").trim().toLowerCase();
+    return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "0.0.0.0";
+}
+
 app.use(express.json());
 app.use(cors());
 
@@ -665,14 +680,23 @@ app.get("/api/dashboard/overview", async (req, res) => {
 
     const userServicePromise = (async () => {
         const t0 = Date.now();
+        const fallbackHost = parseHostFromUrl(USER_SERVICE_URL, "127.0.0.1");
+        let registeredAddress = null;
         try {
-            const healthRes = await axios.get(`${USER_SERVICE_URL}/health`, { timeout: 2500 });
+            const [healthRes, consulUserRes] = await Promise.all([
+                axios.get(`${USER_SERVICE_URL}/health`, { timeout: 2500 }),
+                axios.get(`${CONSUL_URL}/v1/health/service/user-service`, { timeout: 2000 }).catch(() => null),
+            ]);
             const d = healthRes.data || {};
+            const regSvc = consulUserRes?.data?.[0]?.Service;
+            if (regSvc?.Address) registeredAddress = regSvc.Address;
             return {
                 status: d.status === "healthy" ? "PASSING" : "CRITICAL",
                 reachable: true,
                 cloud: d.cloud || "AWS",
                 region: d.region || AWS_REGION,
+                address: registeredAddress || fallbackHost,
+                registeredAddress,
                 port: d.port || 8002,
                 uptimeSeconds: d.uptimeSeconds ?? null,
                 latencyMs: Date.now() - t0,
@@ -685,6 +709,8 @@ app.get("/api/dashboard/overview", async (req, res) => {
                 reachable: false,
                 cloud: "AWS",
                 region: AWS_REGION,
+                address: registeredAddress || fallbackHost,
+                registeredAddress,
                 port: 8002,
                 error: err.message
             };
@@ -789,50 +815,106 @@ app.get("/api/dashboard/overview", async (req, res) => {
         telemetryPromise
     ]);
 
-    // Determine genuine WireGuard VPN status
+    // Determine genuine WireGuard VPN status and whether running in LOCAL vs REMOTE mode
     const wgNet = detectWireGuardInterface();
-    const paymentOnVpnIp = azurePaymentService.address && azurePaymentService.address.startsWith("10.8.0.");
+    const paymentAddress = azurePaymentService.address || null;
+    const paymentOnVpnIp = Boolean(paymentAddress && paymentAddress.startsWith("10.8.0."));
+    const paymentOnRemoteHost = Boolean(paymentAddress && !isLoopbackHost(paymentAddress));
+    const userOnVpnIp = Boolean(awsUserService.address && awsUserService.address.startsWith("10.8.0."));
+    const userOnRemoteHost = Boolean(awsUserService.address && !isLoopbackHost(awsUserService.address));
+    const remoteConfigDetected = Boolean(
+        wgNet.hasWgIp ||
+        paymentOnVpnIp ||
+        paymentOnRemoteHost ||
+        userOnVpnIp ||
+        userOnRemoteHost ||
+        !isLoopbackHost(CONSUL_URL) ||
+        !isLoopbackHost(USER_SERVICE_URL)
+    );
+
+    const deploymentMode = remoteConfigDetected ? "REMOTE" : "LOCAL";
     let wireguardStatus = "UNKNOWN";
+    let wireguardActive = false;
     let wireguardDetail = "WireGuard interface not detected on this host.";
 
     if (wgNet.hasWgIp && paymentOnVpnIp && azurePaymentService.status === "PASSING") {
         wireguardStatus = "CONNECTED";
-        wireguardDetail = `Tunnel active (${AWS_WG_IP} <-> ${azurePaymentService.address}, UDP 51820 verified via Consul health check)`;
-    } else if (wgNet.hasWgIp && paymentOnVpnIp && azurePaymentService.status !== "PASSING") {
+        wireguardActive = true;
+        wireguardDetail = `Tunnel active (${wgNet.interfaces[0]?.address || AWS_WG_IP} <-> ${paymentAddress}, UDP 51820 verified via Consul health check)`;
+    } else if (wgNet.hasWgIp && (paymentOnVpnIp || azurePaymentService.registered)) {
         wireguardStatus = "DEGRADED";
-        wireguardDetail = `WireGuard interface present (${wgNet.interfaces.map((i) => i.address).join(", ")}), but peer ${azurePaymentService.address} health is ${azurePaymentService.status}`;
+        wireguardActive = false;
+        wireguardDetail = `WireGuard interface present (${wgNet.interfaces.map((i) => i.address).join(", ")}), but peer ${paymentAddress || AZURE_WG_IP} health is ${azurePaymentService.status}`;
     } else if (wgNet.hasWgIp) {
+        wireguardStatus = "DEGRADED";
+        wireguardActive = false;
+        wireguardDetail = `WireGuard interface active (${wgNet.interfaces.map((i) => `${i.name}=${i.address}`).join(", ")}), waiting for passing remote peer in Consul.`;
+    } else if (paymentOnVpnIp && azurePaymentService.status === "PASSING") {
         wireguardStatus = "CONNECTED";
-        wireguardDetail = `WireGuard interface active: ${wgNet.interfaces.map((i) => `${i.name}=${i.address}`).join(", ")}`;
-    } else if (!wgNet.hasWgIp && paymentOnVpnIp && azurePaymentService.status === "PASSING") {
-        wireguardStatus = "CONNECTED";
-        wireguardDetail = `Consul verified peer ${azurePaymentService.address}:${azurePaymentService.port} is passing`;
-    } else if (consulStatus.connected && azurePaymentService.registered && (azurePaymentService.address === "127.0.0.1" || azurePaymentService.address === "localhost")) {
-        wireguardStatus = "LOCAL_DIRECT";
-        wireguardDetail = "Running locally via loopback (127.0.0.1); deploy with deploy/wireguard scripts for 10.8.0.x VPN.";
+        wireguardActive = true;
+        wireguardDetail = `Consul verified remote WireGuard peer ${paymentAddress}:${azurePaymentService.port} is passing`;
+    } else if (!remoteConfigDetected) {
+        wireguardStatus = "INACTIVE";
+        wireguardActive = false;
+        wireguardDetail = "Running in LOCAL loopback mode (127.0.0.1). No WireGuard VPN tunnel active on this host.";
     } else if (!consulStatus.connected) {
         wireguardStatus = "UNKNOWN";
+        wireguardActive = false;
         wireguardDetail = "Cannot verify cross-cloud tunnel while Consul is unreachable.";
     }
+
+    const hostWgIp = wgNet.interfaces[0]?.address || (userOnVpnIp ? awsUserService.address : remoteConfigDetected ? AWS_WG_IP : null);
+    const peerWgIp = paymentOnVpnIp ? paymentAddress : remoteConfigDetected ? AZURE_WG_IP : null;
 
     res.json({
         status: "success",
         timestamp: new Date().toISOString(),
+        deploymentMode: {
+            mode: deploymentMode,
+            isRemote: remoteConfigDetected,
+            vpnActive: wireguardActive,
+            label: remoteConfigDetected
+                ? "Remote Multi-Cloud Infrastructure (AWS <-> Azure)"
+                : "Local Loopback Simulation (127.0.0.1)",
+            reason: wgNet.hasWgIp
+                ? `WireGuard interface detected (${wgNet.interfaces.map((i) => `${i.name}=${i.address}`).join(", ")})`
+                : paymentOnVpnIp
+                ? `Remote WireGuard peer ${paymentAddress} registered in Consul`
+                : remoteConfigDetected
+                ? "Remote cloud host/endpoint detected"
+                : "All active services and Consul are running on local loopback (127.0.0.1) without WireGuard"
+        },
         consul: consulStatus,
         awsUserService,
         azurePaymentService,
         wireguard: {
+            active: wireguardActive,
             status: wireguardStatus,
             detail: wireguardDetail,
-            awsWgIp: AWS_WG_IP,
-            azureWgIp: AZURE_WG_IP,
-            port: 51820,
+            awsWgIp: hostWgIp,
+            azureWgIp: peerWgIp,
+            configuredAwsWgIp: AWS_WG_IP,
+            configuredAzureWgIp: AZURE_WG_IP,
+            port: wireguardActive ? 51820 : null,
             hostInterfaceDetected: wgNet.hasWgIp
         },
         telemetry,
         architecture: {
-            aws: { provider: "AWS", region: AWS_REGION, wgIp: AWS_WG_IP, userPort: 8002, consulPort: 8500 },
-            azure: { provider: "AZURE", region: AZURE_REGION, wgIp: AZURE_WG_IP, paymentPort: 8001 }
+            aws: {
+                provider: remoteConfigDetected ? "AWS" : "LOCAL",
+                region: remoteConfigDetected ? AWS_REGION : "localhost (127.0.0.1)",
+                address: awsUserService.address || "127.0.0.1",
+                wgIp: hostWgIp,
+                userPort: awsUserService.port || 8002,
+                consulPort: 8500
+            },
+            azure: {
+                provider: remoteConfigDetected ? "AZURE" : "LOCAL",
+                region: remoteConfigDetected ? AZURE_REGION : "localhost (127.0.0.1)",
+                address: paymentAddress || (remoteConfigDetected ? AZURE_WG_IP : "127.0.0.1"),
+                wgIp: peerWgIp,
+                paymentPort: azurePaymentService.port || 8001
+            }
         }
     });
 });

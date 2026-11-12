@@ -32,8 +32,20 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     : 'Unavailable';
 
   const wgStatus = overview?.wireguard?.status || 'UNKNOWN';
+  const mode = overview?.deploymentMode?.mode;
+  const isVpnActive = Boolean(overview?.wireguard?.active || wgStatus === 'CONNECTED');
   const isPaymentCritical = overview?.azurePaymentService?.status === 'CRITICAL';
   const apiUrlLabel = getApiBaseUrl();
+
+  const vpnPillText = !overview
+    ? 'checking...'
+    : isVpnActive
+    ? 'CONNECTED'
+    : wgStatus === 'DEGRADED'
+    ? 'DEGRADED'
+    : mode === 'LOCAL' || wgStatus === 'INACTIVE'
+    ? 'INACTIVE (Local)'
+    : 'UNKNOWN';
 
   return (
     <header className="fixed top-0 left-0 md:left-64 right-0 h-14 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-3 sm:px-space-lg gap-2 overflow-hidden">
@@ -54,10 +66,33 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             {apiReachable === null ? 'checking...' : datacenter}
           </span>
         </div>
-        <div className="hidden sm:flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container">
-          <span className="material-symbols-outlined text-secondary text-[16px]">vpn_lock</span>
-          <span className="font-code-sm text-code-sm text-on-surface-variant font-medium">
-            VPN: {wgStatus}
+        {mode && (
+          <div
+            className={`hidden md:flex items-center gap-1 px-space-sm py-space-xs rounded-lg font-code-sm text-code-sm font-semibold ${
+              mode === 'REMOTE'
+                ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                : 'bg-secondary-container text-on-secondary-container'
+            }`}
+            title={overview?.deploymentMode?.reason}
+          >
+            <span>{mode === 'REMOTE' ? 'REMOTE CLOUD' : 'LOCAL MODE'}</span>
+          </div>
+        )}
+        <div
+          className={`hidden sm:flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg ${
+            isVpnActive
+              ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+              : wgStatus === 'DEGRADED'
+              ? 'bg-error-container text-on-error-container'
+              : 'bg-surface-container text-on-surface-variant'
+          }`}
+          title={overview?.wireguard?.detail}
+        >
+          <span className="material-symbols-outlined text-[16px]">
+            {isVpnActive ? 'vpn_lock' : 'link_off'}
+          </span>
+          <span className="font-code-sm text-code-sm font-medium">
+            VPN: {vpnPillText}
           </span>
         </div>
       </div>

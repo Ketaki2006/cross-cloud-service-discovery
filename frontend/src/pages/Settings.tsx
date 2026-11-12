@@ -140,7 +140,11 @@ export const Settings: React.FC = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="font-headline-md text-headline-md text-on-surface">HashiCorp Consul Server</span>
-                  <span className="font-code-sm text-code-sm text-on-surface-variant">Shielded on AWS Loopback / WireGuard</span>
+                  <span className="font-code-sm text-code-sm text-on-surface-variant">
+                    {overview?.deploymentMode?.mode === 'LOCAL'
+                      ? 'Localhost Loopback Mode (127.0.0.1:8500)'
+                      : 'Shielded on AWS Loopback / WireGuard'}
+                  </span>
                 </div>
               </div>
               <span
@@ -179,11 +183,25 @@ export const Settings: React.FC = () => {
 
               <div className="flex flex-col gap-1">
                 <label className="font-label-md text-label-md text-on-surface font-medium">WireGuard Cross-Cloud Tunnel</label>
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low font-code-sm text-code-sm text-on-surface">
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low font-code-sm text-code-sm text-on-surface gap-2 flex-wrap">
                   <span>
-                    AWS ({overview?.wireguard?.awsWgIp || '10.8.0.1'}) ↔ Azure ({overview?.wireguard?.azureWgIp || '10.8.0.2'}) • UDP 51820
+                    {overview?.deploymentMode?.mode === 'LOCAL'
+                      ? 'Local Loopback Mode (127.0.0.1) — No WireGuard VPN active on this host'
+                      : `AWS (${overview?.wireguard?.awsWgIp || '10.8.0.1'}) ↔ Azure (${overview?.wireguard?.azureWgIp || '10.8.0.2'}) • UDP 51820`}
                   </span>
-                  <span className="font-semibold text-primary">{overview?.wireguard?.status || 'UNKNOWN'}</span>
+                  <span
+                    className={`font-semibold ${
+                      overview?.wireguard?.active
+                        ? 'text-tertiary'
+                        : overview?.wireguard?.status === 'DEGRADED'
+                        ? 'text-error'
+                        : 'text-secondary'
+                    }`}
+                  >
+                    {overview?.wireguard?.status === 'INACTIVE'
+                      ? 'INACTIVE (LOCAL MODE)'
+                      : overview?.wireguard?.status || 'UNKNOWN'}
+                  </span>
                 </div>
               </div>
 

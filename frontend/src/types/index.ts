@@ -252,6 +252,13 @@ export interface CrossCloudTelemetry {
 export interface DashboardOverviewResponse {
   status: string;
   timestamp: string;
+  deploymentMode?: {
+    mode: 'LOCAL' | 'REMOTE';
+    isRemote: boolean;
+    vpnActive: boolean;
+    label: string;
+    reason: string;
+  };
   consul: {
     status: 'PASSING' | 'UNAVAILABLE';
     connected: boolean;
@@ -267,6 +274,8 @@ export interface DashboardOverviewResponse {
     reachable: boolean;
     cloud: string;
     region: string;
+    address?: string;
+    registeredAddress?: string | null;
     port: number;
     uptimeSeconds?: number | null;
     latencyMs?: number;
@@ -292,11 +301,14 @@ export interface DashboardOverviewResponse {
     error?: string;
   };
   wireguard: {
-    status: 'CONNECTED' | 'DEGRADED' | 'LOCAL_DIRECT' | 'UNKNOWN';
+    active?: boolean;
+    status: 'CONNECTED' | 'DEGRADED' | 'INACTIVE' | 'UNKNOWN';
     detail: string;
-    awsWgIp: string;
-    azureWgIp: string;
-    port: number;
+    awsWgIp: string | null;
+    azureWgIp: string | null;
+    configuredAwsWgIp?: string;
+    configuredAzureWgIp?: string;
+    port: number | null;
     hostInterfaceDetected: boolean;
   };
   telemetry: {
@@ -311,7 +323,7 @@ export interface DashboardOverviewResponse {
     error?: string;
   };
   architecture: {
-    aws: { provider: string; region: string; wgIp: string; userPort: number; consulPort: number };
-    azure: { provider: string; region: string; wgIp: string; paymentPort: number };
+    aws: { provider: string; region: string; address?: string; wgIp: string | null; userPort: number; consulPort: number };
+    azure: { provider: string; region: string; address?: string; wgIp: string | null; paymentPort: number };
   };
 }

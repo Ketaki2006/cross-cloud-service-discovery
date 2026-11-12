@@ -326,6 +326,13 @@ describe('Cross-Cloud Service Discovery Registry Test Suite', () => {
       assert.ok(data.awsUserService);
       assert.ok(data.azurePaymentService);
       assert.ok(data.wireguard);
+      assert.ok(data.deploymentMode);
+      assert.ok(['LOCAL', 'REMOTE'].includes(data.deploymentMode.mode));
+      assert.equal(typeof data.wireguard.active, 'boolean');
+      if (data.deploymentMode.mode === 'LOCAL') {
+        assert.equal(data.wireguard.active, false);
+        assert.equal(data.wireguard.status, 'INACTIVE');
+      }
       assert.ok(data.telemetry);
     });
 
