@@ -332,8 +332,30 @@ describe('Cross-Cloud Service Discovery Registry Test Suite', () => {
       if (data.deploymentMode.mode === 'LOCAL') {
         assert.equal(data.wireguard.active, false);
         assert.equal(data.wireguard.status, 'INACTIVE');
+        assert.equal(data.awsUserService.cloud, 'Local');
       }
+      assert.ok(data.gateway?.hostname);
       assert.ok(data.telemetry);
+    });
+
+    it('WireGuard dump parser & cloud label guard never fake active VPN or AWS/Azure on localhost', () => {
+      const serverApp = require('../server');
+      const { parseWireGuardDump, resolveCloudProvider } = serverApp._helpers;
+
+      assert.equal(resolveCloudProvider(['AWS', 'us-east-1'], '127.0.0.1'), 'Local');
+      assert.equal(resolveCloudProvider(['AZURE', 'central-india'], 'localhost'), 'Local');
+      assert.equal(resolveCloudProvider(['AWS', 'us-east-1'], '10.8.0.1'), 'AWS');
+      assert.equal(resolveCloudProvider(['AZURE', 'central-india'], '10.8.0.2'), 'AZURE');
+
+      const now = 1794455000;
+      const freshDump = `wg0\tpubkey1\t(none)\t20.197.56.115:51820\t10.8.0.2/32\t${now - 25}\t1200\t2400\t25`;
+      const staleDump = `wg0\tpubkey1\t(none)\t20.197.56.115:51820\t10.8.0.2/32\t${now - 900}\t1200\t2400\t25`;
+      const noHandshakeDump = `wg0\tpubkey1\t(none)\t20.197.56.115:51820\t10.8.0.2/32\t0\t0\t0\t25`;
+
+      assert.equal(parseWireGuardDump(freshDump, now).hasRecentHandshake, true);
+      assert.equal(parseWireGuardDump(freshDump, now).activePeer.handshakeAgeSeconds, 25);
+      assert.equal(parseWireGuardDump(staleDump, now).hasRecentHandshake, false);
+      assert.equal(parseWireGuardDump(noHandshakeDump, now).hasRecentHandshake, false);
     });
 
     it('GET /api/consul/catalog should return cataloged services and health statuses', async () => {

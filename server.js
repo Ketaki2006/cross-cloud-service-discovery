@@ -4,6 +4,7 @@ const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const { execFileSync } = require("child_process");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,13 @@ function extractProviderFromTags(tags = []) {
         if (upper === "LOCAL") return "Local";
     }
     return "Local";
+}
+
+function resolveCloudProvider(tags = [], address = "") {
+    if (address && isLoopbackHost(address)) {
+        return "Local";
+    }
+    return extractProviderFromTags(tags);
 }
 
 // Helper: Resolve Payment Service base URL dynamically via Consul (never hardcodes remote IPs)
@@ -74,6 +82,83 @@ function parseHostFromUrl(rawUrl, fallback = "127.0.0.1") {
     } catch {
         return fallback;
     }
+}
+
+function parseWireGuardDump(rawText, nowSec = Math.floor(Date.now() / 1000)) {
+    const peers = [];
+    const lines = String(rawText || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    for (const line of lines) {
+        const cols = line.split("\t");
+        // Peer rows in `wg show all dump` have 9 tab-separated columns:
+        // [interface, publicKey, presharedKey, endpoint, allowedIps, latestHandshake, rxBytes, txBytes, keepalive]
+        // Discard column 1 & 2 (publicKey & presharedKey) so no key material leaves this parser.
+        if (cols.length >= 8) {
+            const latestHandshakeEpoch = Number(cols[5]) || 0;
+            const handshakeAgeSeconds = latestHandshakeEpoch > 0 ? Math.max(0, nowSec - latestHandshakeEpoch) : null;
+            const handshakeRecent = handshakeAgeSeconds !== null && handshakeAgeSeconds <= 210;
+            peers.push({
+                interfaceName: cols[0],
+                endpoint: cols[3] && cols[3] !== "(none)" ? cols[3] : null,
+                allowedIps: cols[4] && cols[4] !== "(none)" ? cols[4] : null,
+                latestHandshakeEpoch,
+                latestHandshakeAt: latestHandshakeEpoch > 0 ? new Date(latestHandshakeEpoch * 1000).toISOString() : null,
+                handshakeAgeSeconds,
+                handshakeRecent,
+                rxBytes: Number(cols[6]) || 0,
+                txBytes: Number(cols[7]) || 0
+            });
+        }
+    }
+    const activePeer = peers.find((p) => p.handshakeRecent) || peers[0] || null;
+    return {
+        peerCount: peers.length,
+        hasRecentHandshake: peers.some((p) => p.handshakeRecent),
+        activePeer
+    };
+}
+
+function inspectWireGuardHandshake(hasWgIp) {
+    if (!hasWgIp || process.platform === "win32") {
+        return {
+            readable: false,
+            peerCount: 0,
+            hasRecentHandshake: false,
+            activePeer: null,
+            error: hasWgIp ? "wg CLI inspection unsupported on win32" : "No WireGuard interface on host"
+        };
+    }
+
+    const attempts = [
+        ["wg", ["show", "all", "dump"]],
+        ["sudo", ["-n", "wg", "show", "all", "dump"]]
+    ];
+
+    let lastErr = "wg CLI unavailable";
+    for (const [cmd, args] of attempts) {
+        try {
+            const stdout = execFileSync(cmd, args, {
+                timeout: 1500,
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "pipe"]
+            });
+            const parsed = parseWireGuardDump(stdout);
+            return {
+                readable: true,
+                ...parsed,
+                error: null
+            };
+        } catch (err) {
+            lastErr = err.message || `${cmd} failed`;
+        }
+    }
+
+    return {
+        readable: false,
+        peerCount: 0,
+        hasRecentHandshake: false,
+        activePeer: null,
+        error: lastErr
+    };
 }
 
 function isLoopbackHost(hostOrUrl) {
@@ -130,6 +215,7 @@ app.get("/api", (req, res) => {
         version: "1.1.0",
         status: "running",
         port: Number(PORT),
+        gatewayHost: os.hostname(),
         consulUrl: CONSUL_URL,
         userServiceUrl: USER_SERVICE_URL,
         simulationMode: false,
@@ -384,7 +470,7 @@ app.get("/api/services/:name", async (req, res) => {
                 address: svc.Address || node.Address,
                 port: svc.Port,
                 tags: svc.Tags || [],
-                provider: extractProviderFromTags(svc.Tags),
+                provider: resolveCloudProvider(svc.Tags, svc.Address || node.Address),
                 node: node.Node,
                 datacenter: node.Datacenter,
                 status: overallStatus,
@@ -542,7 +628,7 @@ app.get("/api/consul/catalog", async (req, res) => {
                         instances.push({
                             id: svc.ID,
                             name: svc.Service,
-                            provider: extractProviderFromTags(tags),
+                            provider: resolveCloudProvider(tags, svc.Address || node.Address),
                             region: regionTag || node.Datacenter || "unknown",
                             address: svc.Address || node.Address || "unknown",
                             port: svc.Port,
@@ -607,7 +693,7 @@ app.get("/api/consul/health/payment-service", async (req, res) => {
             return {
                 id: svc.ID,
                 name: svc.Service,
-                provider: extractProviderFromTags(svc.Tags || []),
+                provider: resolveCloudProvider(svc.Tags || [], svc.Address || node.Address),
                 address: svc.Address || node.Address,
                 port: svc.Port,
                 tags: svc.Tags || [],
@@ -690,12 +776,13 @@ app.get("/api/dashboard/overview", async (req, res) => {
             const d = healthRes.data || {};
             const regSvc = consulUserRes?.data?.[0]?.Service;
             if (regSvc?.Address) registeredAddress = regSvc.Address;
+            const resolvedAddr = registeredAddress || fallbackHost;
             return {
                 status: d.status === "healthy" ? "PASSING" : "CRITICAL",
                 reachable: true,
-                cloud: d.cloud || "AWS",
-                region: d.region || AWS_REGION,
-                address: registeredAddress || fallbackHost,
+                cloud: isLoopbackHost(resolvedAddr) ? "Local" : (d.cloud || "AWS"),
+                region: isLoopbackHost(resolvedAddr) ? "localhost (127.0.0.1)" : (d.region || AWS_REGION),
+                address: resolvedAddr,
                 registeredAddress,
                 port: d.port || 8002,
                 uptimeSeconds: d.uptimeSeconds ?? null,
@@ -704,12 +791,13 @@ app.get("/api/dashboard/overview", async (req, res) => {
                 timestamp: d.timestamp || new Date().toISOString()
             };
         } catch (err) {
+            const resolvedAddr = registeredAddress || fallbackHost;
             return {
                 status: err.response?.status === 503 ? "CRITICAL" : "UNKNOWN",
                 reachable: false,
-                cloud: "AWS",
-                region: AWS_REGION,
-                address: registeredAddress || fallbackHost,
+                cloud: isLoopbackHost(resolvedAddr) ? "Local" : "AWS",
+                region: isLoopbackHost(resolvedAddr) ? "localhost (127.0.0.1)" : AWS_REGION,
+                address: resolvedAddr,
                 registeredAddress,
                 port: 8002,
                 error: err.message
@@ -727,12 +815,13 @@ app.get("/api/dashboard/overview", async (req, res) => {
             const passingRaw = passingRes.data || [];
 
             if (allRaw.length === 0) {
+                const localConsul = isLoopbackHost(CONSUL_URL) && !detectWireGuardInterface().hasWgIp;
                 return {
                     status: "UNKNOWN",
                     registered: false,
                     excludedFromDiscovery: true,
-                    cloud: "AZURE",
-                    region: AZURE_REGION,
+                    cloud: localConsul ? "Local" : "AZURE",
+                    region: localConsul ? "localhost (127.0.0.1)" : AZURE_REGION,
                     error: "payment-service is not registered in Consul catalog"
                 };
             }
@@ -744,6 +833,7 @@ app.get("/api/dashboard/overview", async (req, res) => {
             const svcCheck = checks.find((c) => c.ServiceID === svc.ID) || checks[0] || {};
             const isPassing = passingRaw.length > 0;
             const tags = svc.Tags || [];
+            const resolvedAddr = svc.Address || node.Address;
 
             let status = "UNKNOWN";
             if (isPassing) status = "PASSING";
@@ -756,9 +846,11 @@ app.get("/api/dashboard/overview", async (req, res) => {
                 excludedFromDiscovery: !isPassing,
                 serviceId: svc.ID,
                 serviceName: svc.Service,
-                cloud: extractProviderFromTags(tags),
-                region: tags.find((t) => String(t).toLowerCase().includes("india")) || AZURE_REGION,
-                address: svc.Address || node.Address,
+                cloud: resolveCloudProvider(tags, resolvedAddr),
+                region: isLoopbackHost(resolvedAddr)
+                    ? "localhost (127.0.0.1)"
+                    : (tags.find((t) => String(t).toLowerCase().includes("india")) || AZURE_REGION),
+                address: resolvedAddr,
                 port: svc.Port,
                 tags,
                 datacenter: node.Datacenter,
@@ -767,12 +859,13 @@ app.get("/api/dashboard/overview", async (req, res) => {
                 lastCheckOutput: svcCheck.Output || "No check output"
             };
         } catch (err) {
+            const localConsul = isLoopbackHost(CONSUL_URL) && !detectWireGuardInterface().hasWgIp;
             return {
                 status: "UNKNOWN",
                 registered: false,
                 excludedFromDiscovery: true,
-                cloud: "AZURE",
-                region: AZURE_REGION,
+                cloud: localConsul ? "Local" : "AZURE",
+                region: localConsul ? "localhost (127.0.0.1)" : AZURE_REGION,
                 error: `Consul check unavailable: ${err.message}`
             };
         }
@@ -815,8 +908,9 @@ app.get("/api/dashboard/overview", async (req, res) => {
         telemetryPromise
     ]);
 
-    // Determine genuine WireGuard VPN status and whether running in LOCAL vs REMOTE mode
+    // Determine genuine WireGuard VPN status (requiring a verified recent handshake) and LOCAL vs REMOTE mode
     const wgNet = detectWireGuardInterface();
+    const wgHandshake = inspectWireGuardHandshake(wgNet.hasWgIp);
     const paymentAddress = azurePaymentService.address || null;
     const paymentOnVpnIp = Boolean(paymentAddress && paymentAddress.startsWith("10.8.0."));
     const paymentOnRemoteHost = Boolean(paymentAddress && !isLoopbackHost(paymentAddress));
@@ -837,30 +931,37 @@ app.get("/api/dashboard/overview", async (req, res) => {
     let wireguardActive = false;
     let wireguardDetail = "WireGuard interface not detected on this host.";
 
-    if (wgNet.hasWgIp && paymentOnVpnIp && azurePaymentService.status === "PASSING") {
-        wireguardStatus = "CONNECTED";
-        wireguardActive = true;
-        wireguardDetail = `Tunnel active (${wgNet.interfaces[0]?.address || AWS_WG_IP} <-> ${paymentAddress}, UDP 51820 verified via Consul health check)`;
-    } else if (wgNet.hasWgIp && (paymentOnVpnIp || azurePaymentService.registered)) {
-        wireguardStatus = "DEGRADED";
-        wireguardActive = false;
-        wireguardDetail = `WireGuard interface present (${wgNet.interfaces.map((i) => i.address).join(", ")}), but peer ${paymentAddress || AZURE_WG_IP} health is ${azurePaymentService.status}`;
-    } else if (wgNet.hasWgIp) {
-        wireguardStatus = "DEGRADED";
-        wireguardActive = false;
-        wireguardDetail = `WireGuard interface active (${wgNet.interfaces.map((i) => `${i.name}=${i.address}`).join(", ")}), waiting for passing remote peer in Consul.`;
-    } else if (paymentOnVpnIp && azurePaymentService.status === "PASSING") {
-        wireguardStatus = "CONNECTED";
-        wireguardActive = true;
-        wireguardDetail = `Consul verified remote WireGuard peer ${paymentAddress}:${azurePaymentService.port} is passing`;
-    } else if (!remoteConfigDetected) {
+    if (!remoteConfigDetected) {
         wireguardStatus = "INACTIVE";
         wireguardActive = false;
         wireguardDetail = "Running in LOCAL loopback mode (127.0.0.1). No WireGuard VPN tunnel active on this host.";
+    } else if (wgNet.hasWgIp && !wgHandshake.readable) {
+        wireguardStatus = "UNVERIFIED";
+        wireguardActive = false;
+        wireguardDetail = `WireGuard interface present (${wgNet.interfaces.map((i) => i.address).join(", ")}), but live handshake could not be verified (${wgHandshake.error}).`;
+    } else if (wgNet.hasWgIp && wgHandshake.readable && !wgHandshake.hasRecentHandshake) {
+        const lastAge = wgHandshake.activePeer?.handshakeAgeSeconds;
+        wireguardStatus = lastAge !== null && lastAge !== undefined ? "STALE_HANDSHAKE" : "NO_HANDSHAKE";
+        wireguardActive = false;
+        wireguardDetail = lastAge !== null && lastAge !== undefined
+            ? `WireGuard handshake stale (${lastAge}s ago; peer ${wgHandshake.activePeer?.endpoint || paymentAddress || AZURE_WG_IP} inactive).`
+            : `WireGuard interface active (${wgNet.interfaces.map((i) => i.address).join(", ")}), waiting for peer handshake.`;
+    } else if (wgNet.hasWgIp && wgHandshake.hasRecentHandshake && paymentOnVpnIp && azurePaymentService.status === "PASSING") {
+        wireguardStatus = "CONNECTED";
+        wireguardActive = true;
+        wireguardDetail = `Tunnel active (${wgNet.interfaces[0]?.address || AWS_WG_IP} <-> ${paymentAddress}, handshake ${wgHandshake.activePeer.handshakeAgeSeconds}s ago, Consul passing)`;
+    } else if (wgNet.hasWgIp && wgHandshake.hasRecentHandshake) {
+        wireguardStatus = "DEGRADED";
+        wireguardActive = false;
+        wireguardDetail = `WireGuard handshake active (${wgHandshake.activePeer.handshakeAgeSeconds}s ago), but peer ${paymentAddress || AZURE_WG_IP} health is ${azurePaymentService.status}`;
     } else if (!consulStatus.connected) {
         wireguardStatus = "UNKNOWN";
         wireguardActive = false;
         wireguardDetail = "Cannot verify cross-cloud tunnel while Consul is unreachable.";
+    } else {
+        wireguardStatus = "UNVERIFIED";
+        wireguardActive = false;
+        wireguardDetail = `No local WireGuard interface on gateway host to verify peer handshake (Consul peer: ${paymentAddress || "none"}).`;
     }
 
     const hostWgIp = wgNet.interfaces[0]?.address || (userOnVpnIp ? awsUserService.address : remoteConfigDetected ? AWS_WG_IP : null);
@@ -869,6 +970,12 @@ app.get("/api/dashboard/overview", async (req, res) => {
     res.json({
         status: "success",
         timestamp: new Date().toISOString(),
+        gateway: {
+            hostname: os.hostname(),
+            port: Number(PORT),
+            consulTarget: CONSUL_URL,
+            userServiceTarget: USER_SERVICE_URL
+        },
         deploymentMode: {
             mode: deploymentMode,
             isRemote: remoteConfigDetected,
@@ -896,12 +1003,19 @@ app.get("/api/dashboard/overview", async (req, res) => {
             configuredAwsWgIp: AWS_WG_IP,
             configuredAzureWgIp: AZURE_WG_IP,
             port: wireguardActive ? 51820 : null,
-            hostInterfaceDetected: wgNet.hasWgIp
+            hostInterfaceDetected: wgNet.hasWgIp,
+            handshakeVerified: wgHandshake.readable,
+            handshakeRecent: wgHandshake.hasRecentHandshake,
+            handshakeAgeSeconds: wgHandshake.activePeer?.handshakeAgeSeconds ?? null,
+            latestHandshakeAt: wgHandshake.activePeer?.latestHandshakeAt ?? null,
+            rxBytes: wgHandshake.activePeer?.rxBytes ?? null,
+            txBytes: wgHandshake.activePeer?.txBytes ?? null,
+            peerEndpoint: wgHandshake.activePeer?.endpoint ?? null
         },
         telemetry,
         architecture: {
             aws: {
-                provider: remoteConfigDetected ? "AWS" : "LOCAL",
+                provider: remoteConfigDetected && !isLoopbackHost(awsUserService.address) ? "AWS" : "Local",
                 region: remoteConfigDetected ? AWS_REGION : "localhost (127.0.0.1)",
                 address: awsUserService.address || "127.0.0.1",
                 wgIp: hostWgIp,
@@ -909,7 +1023,7 @@ app.get("/api/dashboard/overview", async (req, res) => {
                 consulPort: 8500
             },
             azure: {
-                provider: remoteConfigDetected ? "AZURE" : "LOCAL",
+                provider: remoteConfigDetected && !isLoopbackHost(paymentAddress || (remoteConfigDetected ? AZURE_WG_IP : "127.0.0.1")) ? "AZURE" : "Local",
                 region: remoteConfigDetected ? AZURE_REGION : "localhost (127.0.0.1)",
                 address: paymentAddress || (remoteConfigDetected ? AZURE_WG_IP : "127.0.0.1"),
                 wgIp: peerWgIp,
@@ -1085,5 +1199,11 @@ if (require.main === module) {
         console.log(`Targeting Consul daemon at ${CONSUL_URL}`);
     });
 }
+
+app._helpers = {
+    parseWireGuardDump,
+    resolveCloudProvider,
+    isLoopbackHost
+};
 
 module.exports = app;

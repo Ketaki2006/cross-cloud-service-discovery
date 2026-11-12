@@ -40,9 +40,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const vpnPillText = !overview
     ? 'checking...'
     : isVpnActive
-    ? 'CONNECTED'
+    ? `CONNECTED${overview?.wireguard?.handshakeAgeSeconds !== null && overview?.wireguard?.handshakeAgeSeconds !== undefined ? ` (${overview.wireguard.handshakeAgeSeconds}s)` : ''}`
     : wgStatus === 'DEGRADED'
     ? 'DEGRADED'
+    : wgStatus === 'STALE_HANDSHAKE'
+    ? 'STALE HANDSHAKE'
+    : wgStatus === 'NO_HANDSHAKE'
+    ? 'NO HANDSHAKE'
+    : wgStatus === 'UNVERIFIED'
+    ? 'UNVERIFIED'
     : mode === 'LOCAL' || wgStatus === 'INACTIVE'
     ? 'INACTIVE (Local)'
     : 'UNKNOWN';
@@ -82,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           className={`hidden sm:flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg ${
             isVpnActive
               ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
-              : wgStatus === 'DEGRADED'
+              : ['DEGRADED', 'STALE_HANDSHAKE', 'NO_HANDSHAKE', 'UNVERIFIED'].includes(wgStatus)
               ? 'bg-error-container text-on-error-container'
               : 'bg-surface-container text-on-surface-variant'
           }`}
@@ -100,11 +106,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       <div className="flex items-center gap-1.5 sm:gap-space-sm md:gap-space-md shrink-0">
         <div
           className="hidden lg:flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-on-surface-variant"
-          title={`Backend API Gateway: ${apiUrlLabel}`}
+          title={`Backend API Gateway: ${apiUrlLabel}${overview?.gateway?.hostname ? ` (Host: ${overview.gateway.hostname})` : ''}`}
         >
           <span className="material-symbols-outlined text-[16px]">terminal</span>
-          <span className="font-code-sm text-code-sm truncate max-w-[210px]">
-            Gateway: {apiUrlLabel}
+          <span className="font-code-sm text-code-sm truncate max-w-[230px]">
+            Gateway: {overview?.gateway?.hostname || apiUrlLabel}
           </span>
           <span
             className={`inline-block w-2 h-2 rounded-full ${

@@ -45,7 +45,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable user-service
 sudo systemctl restart user-service
 
-echo "[4/4] Registering User Service with Consul (127.0.0.1:8002)..."
+echo "[4/4] Registering User Service with Consul (10.8.0.1:8002)..."
 sleep 2
 
 curl -s -X PUT http://127.0.0.1:8500/v1/agent/service/register \
@@ -54,10 +54,10 @@ curl -s -X PUT http://127.0.0.1:8500/v1/agent/service/register \
     "ID": "user-service-aws-1",
     "Name": "user-service",
     "Tags": ["AWS", "us-east-1", "production"],
-    "Address": "127.0.0.1",
+    "Address": "10.8.0.1",
     "Port": 8002,
     "Check": {
-      "HTTP": "http://127.0.0.1:8002/health",
+      "HTTP": "http://10.8.0.1:8002/health",
       "Interval": "10s",
       "Timeout": "3s"
     }

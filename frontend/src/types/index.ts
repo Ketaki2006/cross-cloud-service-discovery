@@ -252,6 +252,12 @@ export interface CrossCloudTelemetry {
 export interface DashboardOverviewResponse {
   status: string;
   timestamp: string;
+  gateway?: {
+    hostname: string;
+    port: number;
+    consulTarget: string;
+    userServiceTarget: string;
+  };
   deploymentMode?: {
     mode: 'LOCAL' | 'REMOTE';
     isRemote: boolean;
@@ -302,7 +308,7 @@ export interface DashboardOverviewResponse {
   };
   wireguard: {
     active?: boolean;
-    status: 'CONNECTED' | 'DEGRADED' | 'INACTIVE' | 'UNKNOWN';
+    status: 'CONNECTED' | 'DEGRADED' | 'INACTIVE' | 'NO_HANDSHAKE' | 'STALE_HANDSHAKE' | 'UNVERIFIED' | 'UNKNOWN';
     detail: string;
     awsWgIp: string | null;
     azureWgIp: string | null;
@@ -310,6 +316,13 @@ export interface DashboardOverviewResponse {
     configuredAzureWgIp?: string;
     port: number | null;
     hostInterfaceDetected: boolean;
+    handshakeVerified?: boolean;
+    handshakeRecent?: boolean;
+    handshakeAgeSeconds?: number | null;
+    latestHandshakeAt?: string | null;
+    rxBytes?: number | null;
+    txBytes?: number | null;
+    peerEndpoint?: string | null;
   };
   telemetry: {
     available: boolean;

@@ -187,13 +187,17 @@ export const Settings: React.FC = () => {
                   <span>
                     {overview?.deploymentMode?.mode === 'LOCAL'
                       ? 'Local Loopback Mode (127.0.0.1) — No WireGuard VPN active on this host'
-                      : `AWS (${overview?.wireguard?.awsWgIp || '10.8.0.1'}) ↔ Azure (${overview?.wireguard?.azureWgIp || '10.8.0.2'}) • UDP 51820`}
+                      : `AWS (${overview?.wireguard?.awsWgIp || '10.8.0.1'}) ↔ Azure (${overview?.wireguard?.azureWgIp || '10.8.0.2'}) • UDP 51820${
+                          overview?.wireguard?.handshakeVerified && overview?.wireguard?.handshakeAgeSeconds !== null && overview?.wireguard?.handshakeAgeSeconds !== undefined
+                            ? ` • Handshake ${overview.wireguard.handshakeAgeSeconds}s ago`
+                            : ''
+                        }`}
                   </span>
                   <span
                     className={`font-semibold ${
                       overview?.wireguard?.active
                         ? 'text-tertiary'
-                        : overview?.wireguard?.status === 'DEGRADED'
+                        : ['DEGRADED', 'STALE_HANDSHAKE', 'NO_HANDSHAKE', 'UNVERIFIED'].includes(overview?.wireguard?.status || '')
                         ? 'text-error'
                         : 'text-secondary'
                     }`}
@@ -203,6 +207,11 @@ export const Settings: React.FC = () => {
                       : overview?.wireguard?.status || 'UNKNOWN'}
                   </span>
                 </div>
+                {overview?.gateway?.hostname && (
+                  <span className="font-code-sm text-[11px] text-secondary mt-1">
+                    Active Express Gateway Host: <strong>{overview.gateway.hostname}</strong> (Mode: {overview?.deploymentMode?.mode || 'UNKNOWN'})
+                  </span>
+                )}
               </div>
 
               <div className="p-2.5 rounded-lg bg-surface-container-low/70 font-code-sm text-[11px] text-secondary">

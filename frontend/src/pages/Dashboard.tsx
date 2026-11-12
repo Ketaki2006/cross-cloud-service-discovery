@@ -30,6 +30,9 @@ function getHealthBadgeStyle(status: HealthState | string) {
     case 'CRITICAL':
     case 'UNAVAILABLE':
     case 'DEGRADED':
+    case 'STALE_HANDSHAKE':
+    case 'NO_HANDSHAKE':
+    case 'UNVERIFIED':
       return {
         bg: 'bg-error-container',
         text: 'text-on-error-container',
@@ -387,7 +390,15 @@ export const Dashboard: React.FC = () => {
             <div className="font-headline-lg text-headline-lg text-on-surface mt-1 font-bold flex flex-wrap items-center gap-2">
               <span className="truncate">{isLocalMode ? 'No VPN Tunnel' : wgStatus}</span>
               <span className={`inline-flex px-2 py-0.5 rounded-full font-code-sm text-code-sm font-medium ${wgBadge.bg} ${wgBadge.text}`}>
-                {isVpnActive ? 'UDP 51820' : isLocalMode ? 'Loopback' : wgStatus}
+                {isVpnActive
+                  ? overview?.wireguard?.handshakeAgeSeconds !== null && overview?.wireguard?.handshakeAgeSeconds !== undefined
+                    ? `Handshake ${overview.wireguard.handshakeAgeSeconds}s ago`
+                    : 'UDP 51820'
+                  : isLocalMode
+                  ? 'Loopback'
+                  : overview?.wireguard?.handshakeAgeSeconds !== null && overview?.wireguard?.handshakeAgeSeconds !== undefined
+                  ? `Stale (${overview.wireguard.handshakeAgeSeconds}s)`
+                  : 'No Verified Handshake'}
               </span>
             </div>
           </div>
