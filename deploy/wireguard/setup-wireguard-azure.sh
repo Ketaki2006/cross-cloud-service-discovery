@@ -23,8 +23,10 @@ echo "----------------------------------------------------"
 echo "Azure VM Public Key: $AZURE_PUB"
 echo "----------------------------------------------------"
 
-echo "[3/4] Creating /etc/wireguard/wg0.conf..."
-# Note: Replace REPLACE_WITH_AWS_PUBLIC_KEY and REPLACE_WITH_AWS_PUBLIC_IP with actual AWS values
+AWS_PUBKEY="${AWS_PUBLIC_KEY:-0NkyhxpPqb7VckGeLcoh3USCT2QkW4/pkgDLg6YRaX8=}"
+AWS_IP="${1:-${AWS_PUBLIC_IP:-54.83.98.229}}"
+
+echo "[3/4] Creating /etc/wireguard/wg0.conf (AWS Peer: $AWS_IP:51820)..."
 cat <<EOF | sudo tee /etc/wireguard/wg0.conf
 [Interface]
 Address = 10.8.0.2/24
@@ -34,10 +36,8 @@ SaveConfig = false
 
 # Peer: Amazon Web Services (AWS) EC2 Instance (us-east-1)
 [Peer]
-# Replace with AWS EC2 Public Key from /etc/wireguard/aws_public.key:
-PublicKey = REPLACE_WITH_AWS_PUBLIC_KEY
-# Replace with AWS EC2 Public IPv4 Address:
-Endpoint = REPLACE_WITH_AWS_PUBLIC_IP:51820
+PublicKey = $AWS_PUBKEY
+Endpoint = $AWS_IP:51820
 AllowedIPs = 10.8.0.1/32
 PersistentKeepalive = 25
 EOF

@@ -60,6 +60,7 @@ export const Dashboard: React.FC = () => {
   // Live API states (no hardcoded healthy defaults)
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [catalogEntries, setCatalogEntries] = useState<ConsulCatalogEntry[]>([]);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'aws' | 'azure' | 'gcp'>('all');
@@ -93,14 +94,27 @@ export const Dashboard: React.FC = () => {
         setUsers(usersData.users);
       }
     } catch (err: any) {
-      setOverviewError(err.message || 'Unable to reach Express Backend API');
+      // Clear stale live metrics when SSH tunnel or AWS Gateway disconnects
+      setOverview(null);
+      setCatalogEntries([]);
+      setUsers([]);
+      setOverviewError(err.message || 'Unable to reach AWS Express Gateway');
+    } finally {
+      setIsInitialLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchAllData();
-    const timer = setInterval(fetchAllData, 10000);
-    return () => clearInterval(timer);
+    let mounted = true;
+    const run = () => {
+      if (mounted) fetchAllData();
+    };
+    run();
+    const timer = setInterval(run, 10000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
   }, [fetchAllData]);
 
   const handleSyncMesh = async () => {
@@ -180,13 +194,39 @@ export const Dashboard: React.FC = () => {
   // Extracted safe status values (never assuming healthy or remote VPN!)
   const awsStatus: HealthState = overview?.awsUserService?.status || 'UNKNOWN';
   const azureStatus: HealthState = overview?.azurePaymentService?.status || 'UNKNOWN';
-  const consulStatus = overview?.consul?.connected ? 'PASSING' : overview ? 'UNAVAILABLE' : 'UNKNOWN';
+  const consulStatus = overview?.consul?.connected
+    ? overview.consul.status || 'PASSING'
+    : overview
+    ? 'UNAVAILABLE'
+    : 'UNKNOWN';
   const wgStatus = overview?.wireguard?.status || 'UNKNOWN';
-  const isRemoteMode = overview?.deploymentMode?.mode === 'REMOTE';
-  const isLocalMode = overview?.deploymentMode?.mode === 'LOCAL';
-  const isVpnActive = Boolean(overview?.wireguard?.active || wgStatus === 'CONNECTED');
-  const userAddress = overview?.awsUserService?.address || overview?.architecture?.aws?.address || '127.0.0.1';
-  const paymentAddress = overview?.azurePaymentService?.address || overview?.architecture?.azure?.address || (isRemoteMode ? '10.8.0.2' : '127.0.0.1');
+  const resolvedMode: 'REMOTE' | 'LOCAL' | null = !overview
+    ? null
+    : overview.deploymentMode?.mode
+    ? overview.deploymentMode.mode
+    : Boolean(
+        overview.wireguard?.hostInterfaceDetected ||
+          overview.wireguard?.status === 'CONNECTED' ||
+          overview.azurePaymentService?.address?.startsWith('10.8.0.') ||
+          overview.awsUserService?.address?.startsWith('10.8.0.') ||
+          (overview.consul?.datacenter && overview.consul.datacenter !== 'dc1')
+      )
+    ? 'REMOTE'
+    : 'LOCAL';
+  const isRemoteMode = resolvedMode === 'REMOTE';
+  const isLocalMode = resolvedMode === 'LOCAL';
+  const isVpnActive = Boolean(
+    overview &&
+      (overview.wireguard?.active ?? (wgStatus === 'CONNECTED' && overview.wireguard?.hostInterfaceDetected !== false))
+  );
+  const userAddress = !overview
+    ? '—'
+    : overview.awsUserService?.address ||
+      (isRemoteMode ? overview.wireguard?.awsWgIp || overview.architecture?.aws?.wgIp || '—' : overview.architecture?.aws?.address || '—');
+  const paymentAddress = !overview
+    ? '—'
+    : overview.azurePaymentService?.address ||
+      (isRemoteMode ? overview.wireguard?.azureWgIp || overview.architecture?.azure?.wgIp || '—' : overview.architecture?.azure?.address || '—');
 
   const totalReq = overview?.telemetry?.totalRequests;
   const successReq = overview?.telemetry?.successfulRequests;
@@ -212,15 +252,19 @@ export const Dashboard: React.FC = () => {
           <div className="flex flex-wrap items-center gap-space-xs mb-1">
             <span
               className={`font-code-sm text-code-sm px-2.5 py-0.5 rounded-full font-semibold ${
-                !overview
+                overviewError
+                  ? 'bg-error-container text-on-error-container'
+                  : !overview
                   ? 'bg-surface-container text-secondary'
                   : isRemoteMode
                   ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
                   : 'bg-secondary-container text-on-secondary-container'
               }`}
             >
-              {!overview
-                ? 'Detecting Mode...'
+              {overviewError
+                ? 'CONNECTION LOST • Gateway Unreachable'
+                : !overview
+                ? 'Connecting to AWS Gateway...'
                 : isRemoteMode
                 ? 'REMOTE MODE • AWS ↔ Azure WireGuard Mesh'
                 : 'LOCAL MODE • Loopback Simulation (127.0.0.1)'}
@@ -267,13 +311,21 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Initial Loading Indicator */}
+      {isInitialLoading && !overview && !overviewError && (
+        <div className="p-space-md rounded-xl bg-surface-container-low text-on-surface flex items-center gap-2 font-body-sm text-body-sm">
+          <span className="material-symbols-outlined text-[20px] text-primary animate-spin">progress_activity</span>
+          <span>Connecting to AWS Express Gateway at <code>{getApiBaseUrl()}</code>...</span>
+        </div>
+      )}
+
       {/* Explicit Local vs Remote Mode Distinction Banner */}
       {isLocalMode && (
         <div className="p-space-md rounded-xl bg-secondary-container text-on-secondary-container flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border border-primary/20">
           <div className="flex items-start sm:items-center gap-2 font-body-sm text-body-sm">
             <span className="material-symbols-outlined text-[20px] shrink-0">computer</span>
             <span>
-              <strong>Local Simulation Mode Active (No VPN):</strong> Gateway, Consul, User Service (<code>{userAddress}:{overview?.awsUserService?.port || 8002}</code>), and Payment Service (<code>{paymentAddress}:{overview?.azurePaymentService?.port || 8001}</code>) are running locally on loopback. To inspect the remote AWS (<code>10.8.0.1</code>) ↔ Azure (<code>10.8.0.2</code>) cluster, open the dashboard hosted on AWS EC2.
+              <strong>Local Simulation Mode Active (No VPN):</strong> Gateway, Consul, User Service (<code>{userAddress}:{overview?.awsUserService?.port ?? '—'}</code>), and Payment Service (<code>{paymentAddress}:{overview?.azurePaymentService?.port ?? '—'}</code>) are running locally on loopback. Connect to AWS EC2 (<code>http://&lt;AWS_PUBLIC_IP&gt;:3000</code>) to see live cross-cloud telemetry.
             </span>
           </div>
         </div>
@@ -281,13 +333,19 @@ export const Dashboard: React.FC = () => {
 
       {/* API Error Alert Banner */}
       {overviewError && (
-        <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex items-center justify-between gap-space-sm">
-          <div className="flex items-center gap-2 font-body-sm text-body-sm">
-            <span className="material-symbols-outlined text-[20px]">cloud_off</span>
+        <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border border-error/30">
+          <div className="flex items-start sm:items-center gap-2 font-body-sm text-body-sm">
+            <span className="material-symbols-outlined text-[20px] shrink-0">cloud_off</span>
             <span>
-              <strong>Backend API Unavailable:</strong> {overviewError}. Service statuses are marked Unknown until backend connectivity is restored.
+              <strong>AWS Gateway Disconnected ({getApiBaseUrl()}):</strong> {overviewError} Live service health and VPN statuses are marked Unknown until the gateway connection is restored.
             </span>
           </div>
+          <button
+            onClick={handleSyncMesh}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-error font-label-md text-label-md font-semibold shrink-0 hover:opacity-90"
+          >
+            Retry Connection
+          </button>
         </div>
       )}
 
@@ -324,9 +382,13 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-1 text-on-surface-variant font-code-sm text-code-sm">
-            <span>{isLocalMode ? userAddress : overview?.architecture?.aws?.region || 'us-east-1'} • :{overview?.awsUserService?.port || 8002}</span>
+            <span>
+              {!overview
+                ? 'Disconnected'
+                : `${userAddress}:${overview.awsUserService?.port ?? '—'}${overview.awsUserService?.region ? ` • ${overview.awsUserService.region}` : ''}`}
+            </span>
             <span className="text-primary font-medium">
-              {overview?.awsUserService?.latencyMs !== undefined ? `${overview.awsUserService.latencyMs}ms probe` : 'No probe'}
+              {overview?.awsUserService?.latencyMs !== undefined ? `${overview.awsUserService.latencyMs}ms probe` : overview ? 'No probe' : 'Unknown'}
             </span>
           </div>
         </div>
@@ -350,8 +412,10 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-1 text-on-surface-variant font-code-sm text-code-sm">
-            <span className="truncate max-w-[140px]">
-              {isLocalMode ? paymentAddress : overview?.azurePaymentService?.region || 'Central India'} • :{overview?.azurePaymentService?.port || 8001}
+            <span className="truncate max-w-[170px]">
+              {!overview
+                ? 'Disconnected'
+                : `${paymentAddress}:${overview.azurePaymentService?.port ?? '—'}${overview.azurePaymentService?.region ? ` • ${overview.azurePaymentService.region}` : ''}`}
             </span>
             <span
               className={`font-medium ${
@@ -363,7 +427,7 @@ export const Dashboard: React.FC = () => {
               }`}
             >
               {!overview
-                ? 'Checking...'
+                ? 'Unknown'
                 : !overview.azurePaymentService?.registered
                 ? 'Not registered'
                 : overview.azurePaymentService.excludedFromDiscovery
@@ -388,9 +452,11 @@ export const Dashboard: React.FC = () => {
               {isLocalMode ? 'Network Mode (Local)' : 'WireGuard VPN Mesh'}
             </div>
             <div className="font-headline-lg text-headline-lg text-on-surface mt-1 font-bold flex flex-wrap items-center gap-2">
-              <span className="truncate">{isLocalMode ? 'No VPN Tunnel' : wgStatus}</span>
-              <span className={`inline-flex px-2 py-0.5 rounded-full font-code-sm text-code-sm font-medium ${wgBadge.bg} ${wgBadge.text}`}>
-                {isVpnActive
+              <span className="truncate">{overviewError || !overview ? 'DISCONNECTED' : isLocalMode ? 'No VPN Tunnel' : wgStatus}</span>
+              <span className={`inline-flex px-2 py-0.5 rounded-full font-code-sm text-code-sm font-medium ${overviewError || !overview ? 'bg-error-container text-on-error-container' : wgBadge.bg + ' ' + wgBadge.text}`}>
+                {overviewError || !overview
+                  ? 'Unknown'
+                  : isVpnActive
                   ? overview?.wireguard?.handshakeAgeSeconds !== null && overview?.wireguard?.handshakeAgeSeconds !== undefined
                     ? `Handshake ${overview.wireguard.handshakeAgeSeconds}s ago`
                     : 'UDP 51820'
@@ -404,7 +470,9 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-1 text-on-surface-variant font-code-sm text-code-sm">
             <span>
-              {isRemoteMode
+              {!overview
+                ? '— ↔ —'
+                : isRemoteMode
                 ? `${overview?.wireguard?.awsWgIp || '10.8.0.1'} ↔ ${overview?.wireguard?.azureWgIp || '10.8.0.2'}`
                 : `${userAddress} ↔ ${paymentAddress}`}
             </span>
@@ -421,7 +489,7 @@ export const Dashboard: React.FC = () => {
               <span className="material-symbols-outlined text-[22px]">monitoring</span>
             </div>
             <span className="font-code-sm text-code-sm font-semibold px-2 py-0.5 rounded-full bg-surface-container text-on-surface">
-              {latestLatency !== undefined ? `Latest: ${latestLatency}ms` : 'No txns yet'}
+              {latestLatency !== undefined ? `Latest: ${latestLatency}ms` : overview ? 'No txns yet' : 'Unavailable'}
             </span>
           </div>
           <div className="mt-space-md">
@@ -432,8 +500,8 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-space-sm pt-space-xs flex items-center justify-between font-code-sm text-code-sm">
-            <span className="text-tertiary font-semibold">{successReq ?? 0} Success</span>
-            <span className="text-error font-semibold">{failedReq ?? 0} Failed</span>
+            <span className="text-tertiary font-semibold">{successReq ?? '—'} Success</span>
+            <span className="text-error font-semibold">{failedReq ?? '—'} Failed</span>
           </div>
         </div>
       </div>
@@ -465,7 +533,11 @@ export const Dashboard: React.FC = () => {
                       {isLocalMode ? 'Local User Service Node' : 'AWS EC2 Node'}
                     </div>
                     <div className="font-code-sm text-code-sm text-secondary">
-                      {isLocalMode ? 'Host: localhost (127.0.0.1)' : `Region: ${overview?.architecture?.aws?.region || 'us-east-1'}`}
+                      {!overview
+                        ? 'Status unavailable'
+                        : isLocalMode
+                        ? 'Host: localhost (127.0.0.1)'
+                        : `Region: ${overview.architecture?.aws?.region || overview.awsUserService?.region || 'Unknown'}`}
                     </div>
                   </div>
                 </div>
@@ -476,14 +548,16 @@ export const Dashboard: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 mt-1 font-code-sm text-code-sm">
                 <div className="bg-surface-container-lowest p-2 rounded">
                   <span className="text-secondary block text-[11px]">User Service</span>
-                  <span className="text-on-surface font-semibold">Port {overview?.awsUserService?.port || 8002}</span>
+                  <span className="text-on-surface font-semibold">
+                    {overview?.awsUserService?.port ? `Port ${overview.awsUserService.port}` : 'Unknown'}
+                  </span>
                 </div>
                 <div className="bg-surface-container-lowest p-2 rounded">
                   <span className="text-secondary block text-[11px]">
-                    {isRemoteMode && overview?.wireguard?.awsWgIp ? 'WireGuard IP' : 'Endpoint IP'}
+                    {!overview ? 'Endpoint IP' : isRemoteMode && overview?.wireguard?.awsWgIp ? 'WireGuard IP' : 'Endpoint IP'}
                   </span>
                   <span className="text-on-surface font-semibold">
-                    {isRemoteMode ? (overview?.wireguard?.awsWgIp || userAddress) : userAddress}
+                    {!overview ? 'Unknown' : isRemoteMode ? (overview?.wireguard?.awsWgIp || userAddress) : userAddress}
                   </span>
                 </div>
                 <div className="bg-surface-container-lowest p-2 rounded col-span-2 flex justify-between">
@@ -499,19 +573,27 @@ export const Dashboard: React.FC = () => {
             <div className="lg:col-span-3 flex flex-col items-center justify-center p-space-sm rounded-xl bg-surface-container-low/60 text-center gap-1.5">
               <div className="flex items-center gap-1 font-code-sm text-code-sm font-semibold text-primary">
                 <span className={`material-symbols-outlined text-[18px] ${isPaying ? 'animate-spin' : ''}`}>
-                  {isPaying ? 'sync' : isVpnActive ? 'vpn_key' : 'lan'}
+                  {isPaying ? 'sync' : isVpnActive ? 'vpn_key' : !overview ? 'cloud_off' : 'lan'}
                 </span>
-                <span>{isRemoteMode ? 'WireGuard Tunnel' : 'Local Loopback (No VPN)'}</span>
+                <span>
+                  {!overview
+                    ? 'Gateway Disconnected'
+                    : isRemoteMode
+                    ? 'WireGuard Tunnel'
+                    : 'Local Loopback (No VPN)'}
+                </span>
               </div>
               <div className="w-full flex items-center justify-center gap-1 my-1">
                 <span className={`h-1 flex-1 rounded-full ${isPaying ? 'bg-primary animate-pulse' : isVpnActive ? 'bg-tertiary' : 'bg-outline-variant'}`}></span>
-                <span className={`px-2 py-0.5 rounded font-code-sm text-[11px] font-bold ${wgBadge.bg} ${wgBadge.text}`}>
-                  {isPaying ? 'ROUTING PAYMENT...' : isVpnActive ? 'UDP 51820' : isLocalMode ? '127.0.0.1' : wgStatus}
+                <span className={`px-2 py-0.5 rounded font-code-sm text-[11px] font-bold ${overviewError || !overview ? 'bg-error-container text-on-error-container' : wgBadge.bg + ' ' + wgBadge.text}`}>
+                  {!overview ? 'DISCONNECTED' : isPaying ? 'ROUTING PAYMENT...' : isVpnActive ? 'UDP 51820' : isLocalMode ? '127.0.0.1' : wgStatus}
                 </span>
                 <span className={`h-1 flex-1 rounded-full ${isPaying ? 'bg-primary animate-pulse' : isVpnActive ? 'bg-tertiary' : 'bg-outline-variant'}`}></span>
               </div>
               <div className="font-code-sm text-[11px] text-secondary">
-                Consul Discovery → {overview?.azurePaymentService?.registered ? `${paymentAddress}:${overview?.azurePaymentService?.port || 8001}` : 'Not registered'}
+                {!overview
+                  ? 'Waiting for AWS Gateway...'
+                  : `Consul Discovery → ${overview?.azurePaymentService?.registered ? `${paymentAddress}:${overview?.azurePaymentService?.port || 8001}` : 'Not registered'}`}
               </div>
             </div>
 
@@ -525,7 +607,11 @@ export const Dashboard: React.FC = () => {
                       {isLocalMode ? 'Local Payment Service Node' : 'Azure VM Node'}
                     </div>
                     <div className="font-code-sm text-code-sm text-secondary">
-                      {isLocalMode ? 'Host: localhost (127.0.0.1)' : `Region: ${overview?.azurePaymentService?.region || 'Central India'}`}
+                      {!overview
+                        ? 'Status unavailable'
+                        : isLocalMode
+                        ? 'Host: localhost (127.0.0.1)'
+                        : `Region: ${overview.azurePaymentService?.region || 'Unknown'}`}
                     </div>
                   </div>
                 </div>
@@ -536,14 +622,16 @@ export const Dashboard: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 mt-1 font-code-sm text-code-sm">
                 <div className="bg-surface-container-lowest p-2 rounded">
                   <span className="text-secondary block text-[11px]">Payment Service</span>
-                  <span className="text-on-surface font-semibold">Port {overview?.azurePaymentService?.port || 8001}</span>
+                  <span className="text-on-surface font-semibold">
+                    {overview?.azurePaymentService?.port ? `Port ${overview.azurePaymentService.port}` : 'Unknown'}
+                  </span>
                 </div>
                 <div className="bg-surface-container-lowest p-2 rounded">
                   <span className="text-secondary block text-[11px]">
-                    {isRemoteMode && paymentAddress.startsWith('10.8.0.') ? 'WireGuard IP' : 'Endpoint IP'}
+                    {!overview ? 'Endpoint IP' : isRemoteMode && paymentAddress.startsWith('10.8.0.') ? 'WireGuard IP' : 'Endpoint IP'}
                   </span>
                   <span className="text-on-surface font-semibold">
-                    {overview?.azurePaymentService?.registered ? paymentAddress : 'Unregistered'}
+                    {!overview ? 'Unknown' : overview?.azurePaymentService?.registered ? paymentAddress : 'Unregistered'}
                   </span>
                 </div>
                 <div className="bg-surface-container-lowest p-2 rounded col-span-2 flex justify-between">
@@ -599,7 +687,14 @@ export const Dashboard: React.FC = () => {
 
         <form onSubmit={handleExecutePayment} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-space-sm mt-space-md items-end">
           <div className="lg:col-span-3 flex flex-col gap-1">
-            <label className="font-code-sm text-code-sm text-secondary">User ID</label>
+            <label className="font-code-sm text-code-sm text-secondary flex items-center justify-between">
+              <span>User ID</span>
+              {users.find((u) => u.id === selectedUserId) && (
+                <span className="text-tertiary font-bold">
+                  Bal: ${users.find((u) => u.id === selectedUserId)?.balance.toFixed(2)}
+                </span>
+              )}
+            </label>
             <select
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
@@ -608,7 +703,7 @@ export const Dashboard: React.FC = () => {
               {users.length > 0 ? (
                 users.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.id} — {u.name}
+                    {u.id} — {u.name} (${u.balance.toFixed(2)})
                   </option>
                 ))
               ) : (
@@ -734,8 +829,8 @@ export const Dashboard: React.FC = () => {
             </p>
           </div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low text-secondary font-code-sm text-code-sm">
-            <span className="material-symbols-outlined text-[16px] shrink-0">memory</span>
-            <span className="break-words">{overview?.telemetry?.storageNote || 'In-memory telemetry (resets when User Service restarts)'}</span>
+            <span className="material-symbols-outlined text-[16px] shrink-0 text-primary">database</span>
+            <span className="break-words">{overview?.telemetry?.storageNote || 'Persistent SQLite Database (AWS: users.db | Azure: payments.db)'}</span>
           </span>
         </div>
 

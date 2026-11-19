@@ -44,6 +44,45 @@ ui_config {
 }
 EOF
 
+echo "[2b/4] Writing static Consul service registration definitions..."
+cat <<EOF | sudo tee /etc/consul.d/user-service.json
+{
+  "service": {
+    "id": "user-service-aws-1",
+    "name": "user-service",
+    "tags": ["AWS", "us-east-1", "production"],
+    "address": "10.8.0.1",
+    "port": 8002,
+    "check": {
+      "id": "user-service-check",
+      "name": "AWS User Service Health Check",
+      "http": "http://10.8.0.1:8002/health",
+      "interval": "10s",
+      "timeout": "3s"
+    }
+  }
+}
+EOF
+
+cat <<EOF | sudo tee /etc/consul.d/payment-service.json
+{
+  "service": {
+    "id": "payment-service-azure-1",
+    "name": "payment-service",
+    "tags": ["AZURE", "central-india"],
+    "address": "10.8.0.2",
+    "port": 8001,
+    "check": {
+      "id": "payment-service-check",
+      "name": "Azure Payment Service Health Check",
+      "http": "http://10.8.0.2:8001/health",
+      "interval": "10s",
+      "timeout": "3s"
+    }
+  }
+}
+EOF
+
 echo "[3/4] Creating systemd service /etc/systemd/system/consul.service..."
 cat <<EOF | sudo tee /etc/systemd/system/consul.service
 [Unit]
@@ -55,7 +94,7 @@ After=network-online.target wg-quick@wg0.service
 Type=simple
 User=root
 ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d
-Restart=on-failure
+Restart=always
 RestartSec=5
 LimitNOFILE=65536
 

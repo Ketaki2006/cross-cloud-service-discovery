@@ -15,11 +15,11 @@ export const App: React.FC = () => {
   return (
     <ToastProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-surface text-on-surface overflow-x-hidden">
+        <div className="min-h-screen bg-surface text-on-surface overflow-x-hidden overflow-y-auto">
           <Sidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
           <div className="md:pl-64 transition-all min-w-0">
             <Header onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)} />
-            <main className="relative pt-14 w-full max-w-full min-h-screen bg-surface px-3 sm:px-space-lg py-space-lg overflow-x-hidden">
+            <main className="relative pt-20 w-full max-w-full min-h-screen bg-surface px-3 sm:px-space-lg pb-28 overflow-x-hidden overflow-y-visible">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/service-registry" element={<ServiceRegistry />} />

@@ -1,21 +1,48 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
+  getServices,
   getConsulCatalog,
   getConsulStatus,
+  getHealthChecks,
   registerService,
   deregisterService,
   probeServiceHealth,
   getApiBaseUrl,
 } from '../services/api';
-import { ConsulCatalogEntry, ConsulStatusResponse } from '../types';
+import { ConsulCatalogEntry, ConsulStatusResponse, HealthCheckItem, HealthState } from '../types';
 import { useToast } from '../components/Toast';
+
+function resolveProviderFromTags(tags: string[] = [], address = ''): string {
+  const lowerAddr = String(address || '').toLowerCase();
+  if (lowerAddr === '127.0.0.1' || lowerAddr === 'localhost' || lowerAddr === '::1') {
+    return 'Local';
+  }
+  for (const tag of tags) {
+    const upper = String(tag).toUpperCase();
+    if (upper === 'AWS') return 'AWS';
+    if (upper === 'AZURE') return 'AZURE';
+    if (upper === 'GCP') return 'GCP';
+    if (upper === 'HYBRID') return 'Hybrid';
+    if (upper === 'LOCAL') return 'Local';
+  }
+  return 'Unknown';
+}
+
+function resolveHealthFromChecks(checks: HealthCheckItem[]): HealthState {
+  if (!checks || checks.length === 0) return 'UNKNOWN';
+  if (checks.some((c) => c.Status === 'critical')) return 'CRITICAL';
+  if (checks.some((c) => c.Status === 'warning')) return 'WARNING';
+  if (checks.every((c) => c.Status === 'passing')) return 'PASSING';
+  return 'UNKNOWN';
+}
 
 export const ServiceRegistry: React.FC = () => {
   const { showToast } = useToast();
   const [services, setServices] = useState<ConsulCatalogEntry[]>([]);
   const [consulInfo, setConsulInfo] = useState<ConsulStatusResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [showRegCard, setShowRegCard] = useState(false);
   const [inspectItem, setInspectItem] = useState<ConsulCatalogEntry | null>(null);
   const [probingId, setProbingId] = useState<string | null>(null);
@@ -39,27 +66,99 @@ export const ServiceRegistry: React.FC = () => {
   const [sortBy, setSortBy] = useState('default');
 
   const loadServices = useCallback(async () => {
-    setIsLoading(true);
+    setIsRefreshing(true);
     try {
-      const [catalogRes, statusRes] = await Promise.all([
-        getConsulCatalog(),
+      const [servicesRes, statusRes, healthRes, catalogRes] = await Promise.all([
+        getServices(),
         getConsulStatus().catch(() => null),
+        getHealthChecks().catch(() => null),
+        getConsulCatalog().catch(() => null),
       ]);
-      setServices(catalogRes.instances || []);
+
+      const catalogById = new Map<string, ConsulCatalogEntry>();
+      for (const inst of catalogRes?.instances || []) {
+        catalogById.set(inst.id, inst);
+      }
+
+      const checksByServiceId = new Map<string, HealthCheckItem[]>();
+      for (const chk of healthRes?.checks || []) {
+        if (!chk.ServiceID) continue;
+        const list = checksByServiceId.get(chk.ServiceID) || [];
+        list.push(chk);
+        checksByServiceId.set(chk.ServiceID, list);
+      }
+
+      const rawServices = Object.values(servicesRes.services || {});
+      const mappedServices: ConsulCatalogEntry[] = rawServices.map((svc: any) => {
+        const svcId = svc.ID || svc.id;
+        const svcName = svc.Service || svc.name || svcId;
+        const catalogMatch = catalogById.get(svcId);
+        const svcChecks = checksByServiceId.get(svcId) || [];
+        const primaryCheck = svcChecks[0];
+        const tags: string[] = Array.isArray(svc.Tags) ? svc.Tags : [];
+        const address = svc.Address || catalogMatch?.address || 'unknown';
+        const port = svc.Port ?? catalogMatch?.port ?? 0;
+        const healthStatus = catalogMatch?.healthStatus || resolveHealthFromChecks(svcChecks);
+        const healthTag = tags.find((t) => String(t).startsWith('health:'));
+        const checkPath = catalogMatch?.checkPath || (healthTag ? healthTag.slice(7) : '/health');
+        const regionTag = tags.find(
+          (t) =>
+            !['AWS', 'AZURE', 'GCP', 'LOCAL', 'HYBRID'].includes(String(t).toUpperCase()) &&
+            !String(t).startsWith('health:')
+        );
+
+        return {
+          id: svcId,
+          name: svcName,
+          provider: catalogMatch?.provider || resolveProviderFromTags(tags, address),
+          region: catalogMatch?.region || regionTag || svc.Datacenter || statusRes?.datacenter || 'unknown',
+          address,
+          port,
+          tags,
+          node: catalogMatch?.node || statusRes?.nodeName || 'unknown',
+          datacenter: svc.Datacenter || catalogMatch?.datacenter || statusRes?.datacenter || 'unknown',
+          healthStatus,
+          excludedFromDiscovery: catalogMatch ? catalogMatch.excludedFromDiscovery : healthStatus !== 'PASSING',
+          lastCheckId: catalogMatch?.lastCheckId || primaryCheck?.CheckID || 'unknown',
+          lastCheckOutput: catalogMatch?.lastCheckOutput || primaryCheck?.Output || 'No check output recorded',
+          checkPath,
+          healthUrl:
+            catalogMatch?.healthUrl ||
+            (address !== 'unknown' && port ? `http://${address}:${port}${checkPath.startsWith('/') ? checkPath : '/' + checkPath}` : null),
+        };
+      });
+
+      const seenIds = new Set(mappedServices.map((s) => s.id));
+      for (const extra of catalogRes?.instances || []) {
+        if (!seenIds.has(extra.id)) {
+          mappedServices.push(extra);
+        }
+      }
+
+      setServices(mappedServices);
       setConsulInfo(statusRes);
       setLoadError(null);
     } catch (err: any) {
       setServices([]);
-      setLoadError(err.message || 'Unable to retrieve Consul catalog via backend API.');
+      setConsulInfo(null);
+      setLoadError(err.message || 'Unable to retrieve services from Consul backend.');
     } finally {
-      setIsLoading(false);
+      setIsInitialLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    loadServices();
-    const timer = setInterval(loadServices, 10000);
-    return () => clearInterval(timer);
+    let active = true;
+    const run = () => {
+      if (active) loadServices();
+    };
+    run();
+    const timer = setInterval(run, 10000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
   }, [loadServices]);
 
   const filteredServices = useMemo(() => {
@@ -256,11 +355,19 @@ await fetch('${getApiBaseUrl()}/api/services/register', {
 
         {/* Error Banner */}
         {loadError && (
-          <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex items-center gap-2 font-body-sm text-body-sm">
-            <span className="material-symbols-outlined text-[20px]">error</span>
-            <span>
-              <strong>Consul Catalog Unavailable:</strong> {loadError}
-            </span>
+          <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+            <div className="flex items-start sm:items-center gap-2 font-body-sm text-body-sm">
+              <span className="material-symbols-outlined text-[20px] shrink-0">cloud_off</span>
+              <span>
+                <strong>Consul Catalog Unavailable:</strong> {loadError}
+              </span>
+            </div>
+            <button
+              onClick={loadServices}
+              className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-error font-label-md text-label-md font-semibold shrink-0"
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -476,7 +583,7 @@ await fetch('${getApiBaseUrl()}/api/services/register', {
                 className="bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-md text-label-md px-space-sm py-1.5 rounded-lg shadow-sm flex items-center gap-1.5"
                 onClick={loadServices}
               >
-                <span className={`material-symbols-outlined text-[16px] text-tertiary ${isLoading ? 'animate-spin' : ''}`}>sync</span>
+                <span className={`material-symbols-outlined text-[16px] text-tertiary ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
                 <span>Refresh Catalog</span>
               </button>
             </div>
@@ -501,10 +608,10 @@ await fetch('${getApiBaseUrl()}/api/services/register', {
                 {filteredServices.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-secondary">
-                      {isLoading
+                      {isInitialLoading
                         ? 'Loading Consul catalog services...'
                         : loadError
-                        ? 'Cannot load services while Consul catalog is unreachable.'
+                        ? 'Cannot load services while AWS Gateway or Consul catalog is unreachable.'
                         : 'No services match current filters in Consul catalog.'}
                     </td>
                   </tr>

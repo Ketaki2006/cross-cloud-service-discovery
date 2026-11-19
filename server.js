@@ -587,6 +587,65 @@ app.get("/api/scenarios/status", async (req, res) => {
     }
 });
 
+// Direct alias endpoints for live demonstration & curl evaluation
+app.post("/simulate/unhealthy", async (req, res) => {
+    const paymentBaseUrl = await resolvePaymentServiceUrl();
+    try {
+        const response = await axios.post(`${paymentBaseUrl}/simulate/unhealthy`, {}, { timeout: 3000 });
+        res.json({
+            status: "success",
+            scenario: "fault_injection",
+            targetUrl: paymentBaseUrl,
+            message: `Simulated internal failure injected into Payment Service (${paymentBaseUrl}). Health probe will return HTTP 503.`,
+            details: response.data
+        });
+    } catch (err) {
+        res.status(502).json({
+            status: "error",
+            message: `Could not reach Payment Service at ${paymentBaseUrl}. Ensure payment-service is running.`,
+            error: err.message
+        });
+    }
+});
+
+app.post("/simulate/healthy", async (req, res) => {
+    const paymentBaseUrl = await resolvePaymentServiceUrl();
+    try {
+        const response = await axios.post(`${paymentBaseUrl}/simulate/healthy`, {}, { timeout: 3000 });
+        res.json({
+            status: "success",
+            scenario: "recovery",
+            targetUrl: paymentBaseUrl,
+            message: `Recovery triggered. Payment Service (${paymentBaseUrl}) restored to normal. Health probe will return HTTP 200 OK.`,
+            details: response.data
+        });
+    } catch (err) {
+        res.status(502).json({
+            status: "error",
+            message: `Could not reach Payment Service at ${paymentBaseUrl}. Ensure payment-service is running.`,
+            error: err.message
+        });
+    }
+});
+
+app.get("/simulate/status", async (req, res) => {
+    const paymentBaseUrl = await resolvePaymentServiceUrl();
+    try {
+        const response = await axios.get(`${paymentBaseUrl}/simulate/status`, { timeout: 3000 });
+        res.json({
+            status: "success",
+            targetUrl: paymentBaseUrl,
+            paymentService: response.data
+        });
+    } catch (err) {
+        res.json({
+            status: "unknown",
+            targetUrl: paymentBaseUrl,
+            paymentService: { isHealthy: null, error: `Payment service offline or unreachable at ${paymentBaseUrl}` }
+        });
+    }
+});
+
 // 11. Full Consul Catalog Services (GET /v1/catalog/services + /v1/health/service/:name + ?passing)
 app.get("/api/consul/catalog", async (req, res) => {
     try {
@@ -1170,6 +1229,33 @@ app.get("/api/cross-cloud/telemetry", async (req, res) => {
                 lastRequest: null,
                 recentHistory: []
             }
+        });
+    }
+});
+
+// 18. Database inspection proxy
+app.get("/api/database/status", async (req, res) => {
+    try {
+        const response = await axios.get(`${USER_SERVICE_URL}/api/database/status`, { timeout: 3000 });
+        res.json(response.data);
+    } catch (err) {
+        res.status(503).json({
+            status: "error",
+            message: `User Service database info unavailable: ${err.message}`
+        });
+    }
+});
+
+// 19. Payment Service Ledger history proxy
+app.get("/api/payments/history", async (req, res) => {
+    try {
+        const paymentBaseUrl = await resolvePaymentServiceUrl();
+        const response = await axios.get(`${paymentBaseUrl}/api/payments`, { timeout: 3000 });
+        res.json(response.data);
+    } catch (err) {
+        res.status(502).json({
+            status: "error",
+            message: `Payment Service payments list unavailable: ${err.message}`
         });
     }
 });

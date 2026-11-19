@@ -16,3 +16,8 @@ frontend/dist/
 *.ppk
 wg*.conf
 secrets/
+chrome_temp*/
+tmp_edge/
+*.db
+*.sqlite
+*.sqlite3

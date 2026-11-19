@@ -19,6 +19,7 @@ export const Settings: React.FC = () => {
 
   const [apiTestStatus, setApiTestStatus] = useState<string>('Checking Gateway API...');
   const [apiTestLoading, setApiTestLoading] = useState(false);
+  const [apiReachable, setApiReachable] = useState<boolean | null>(null);
 
   // Preference states
   const [pollingInterval, setPollingInterval] = useState('10s');
@@ -58,6 +59,7 @@ export const Settings: React.FC = () => {
         getDashboardOverview().catch(() => null),
       ]);
       if (ovData) setOverview(ovData);
+      setApiReachable(true);
       const latency = Date.now() - start;
       if (apiData.status === 'running') {
         setApiTestStatus(`HTTP 200 OK (${latency}ms) • Express Gateway :${apiData.port}`);
@@ -66,6 +68,8 @@ export const Settings: React.FC = () => {
         setApiTestStatus('API returned non-running status');
       }
     } catch (err: any) {
+      setOverview(null);
+      setApiReachable(false);
       setApiTestStatus(`Unavailable: ${err.message}`);
       if (!silent) showToast(`Express Gateway unreachable: ${err.message}`, 'error');
     } finally {
@@ -141,7 +145,9 @@ export const Settings: React.FC = () => {
                 <div className="flex flex-col">
                   <span className="font-headline-md text-headline-md text-on-surface">HashiCorp Consul Server</span>
                   <span className="font-code-sm text-code-sm text-on-surface-variant">
-                    {overview?.deploymentMode?.mode === 'LOCAL'
+                    {!overview
+                      ? 'Status unavailable (Gateway disconnected)'
+                      : overview.deploymentMode?.mode === 'LOCAL'
                       ? 'Localhost Loopback Mode (127.0.0.1:8500)'
                       : 'Shielded on AWS Loopback / WireGuard'}
                   </span>
@@ -155,7 +161,11 @@ export const Settings: React.FC = () => {
                 }`}
               >
                 <span className={`inline-block w-2 h-2 rounded-full ${consulStatus?.connected ? 'bg-tertiary' : 'bg-error'}`}></span>
-                {consulStatus?.connected ? `Active • ${consulStatus.datacenter}` : 'Unavailable'}
+                {consulStatus === null
+                  ? 'DISCONNECTED'
+                  : consulStatus.connected
+                  ? `Active • ${consulStatus.datacenter}`
+                  : 'UNKNOWN'}
               </span>
             </div>
 
@@ -185,9 +195,11 @@ export const Settings: React.FC = () => {
                 <label className="font-label-md text-label-md text-on-surface font-medium">WireGuard Cross-Cloud Tunnel</label>
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low font-code-sm text-code-sm text-on-surface gap-2 flex-wrap">
                   <span>
-                    {overview?.deploymentMode?.mode === 'LOCAL'
+                    {!overview
+                      ? 'Gateway unreachable — WireGuard status unknown'
+                      : overview?.deploymentMode?.mode === 'LOCAL'
                       ? 'Local Loopback Mode (127.0.0.1) — No WireGuard VPN active on this host'
-                      : `AWS (${overview?.wireguard?.awsWgIp || '10.8.0.1'}) ↔ Azure (${overview?.wireguard?.azureWgIp || '10.8.0.2'}) • UDP 51820${
+                      : `AWS (${overview?.wireguard?.awsWgIp || '10.8.0.1'}) ↔ Azure (${overview?.wireguard?.azureWgIp || '10.8.0.2'}) • UDP ${overview?.wireguard?.port || 51820}${
                           overview?.wireguard?.handshakeVerified && overview?.wireguard?.handshakeAgeSeconds !== null && overview?.wireguard?.handshakeAgeSeconds !== undefined
                             ? ` • Handshake ${overview.wireguard.handshakeAgeSeconds}s ago`
                             : ''
@@ -195,21 +207,23 @@ export const Settings: React.FC = () => {
                   </span>
                   <span
                     className={`font-semibold ${
-                      overview?.wireguard?.active
+                      overview && (overview.wireguard?.active ?? (overview.wireguard?.status === 'CONNECTED' && overview.wireguard?.hostInterfaceDetected !== false))
                         ? 'text-tertiary'
-                        : ['DEGRADED', 'STALE_HANDSHAKE', 'NO_HANDSHAKE', 'UNVERIFIED'].includes(overview?.wireguard?.status || '')
+                        : !overview || ['DEGRADED', 'STALE_HANDSHAKE', 'NO_HANDSHAKE', 'UNVERIFIED'].includes(overview?.wireguard?.status || '')
                         ? 'text-error'
                         : 'text-secondary'
                     }`}
                   >
-                    {overview?.wireguard?.status === 'INACTIVE'
+                    {!overview
+                      ? 'DISCONNECTED'
+                      : overview?.wireguard?.status === 'INACTIVE'
                       ? 'INACTIVE (LOCAL MODE)'
                       : overview?.wireguard?.status || 'UNKNOWN'}
                   </span>
                 </div>
-                {overview?.gateway?.hostname && (
+                {(overview?.gateway?.hostname || overview?.consul?.nodeName) && (
                   <span className="font-code-sm text-[11px] text-secondary mt-1">
-                    Active Express Gateway Host: <strong>{overview.gateway.hostname}</strong> (Mode: {overview?.deploymentMode?.mode || 'UNKNOWN'})
+                    Active Express Gateway Node: <strong>{overview?.gateway?.hostname || overview?.consul?.nodeName}</strong> (Datacenter: {overview?.consul?.datacenter || 'Unknown'})
                   </span>
                 )}
               </div>
@@ -252,12 +266,14 @@ export const Settings: React.FC = () => {
               </div>
               <span
                 className={`inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full font-code-sm text-code-sm font-semibold ${
-                  overview
+                  apiReachable === true
                     ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                    : apiReachable === false
+                    ? 'bg-error-container text-on-error-container'
                     : 'bg-surface-container text-secondary'
                 }`}
               >
-                {overview ? 'Online' : 'Checking...'}
+                {apiReachable === true ? 'Online' : apiReachable === false ? 'DISCONNECTED' : 'Checking...'}
               </span>
             </div>
 

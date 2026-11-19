@@ -397,7 +397,7 @@ describe('Cross-Cloud Service Discovery Registry Test Suite', () => {
       const res = await fetch(`${API_BASE}/api/telemetry`);
       assert.ok([200, 503].includes(res.status));
       const data = await res.json();
-      assert.equal(data.persistence, 'in-memory');
+      assert.ok(['in-memory', 'sqlite'].includes(data.persistence));
       assert.ok(data.storageNote);
       assert.ok(data.telemetry);
     });

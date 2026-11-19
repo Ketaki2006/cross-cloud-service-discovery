@@ -10,19 +10,30 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const [consulInfo, setConsulInfo] = useState<ConsulStatusResponse | null>(null);
+  const [hasChecked, setHasChecked] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     const checkStatus = async () => {
       try {
         const res = await getConsulStatus();
+        if (!active) return;
         setConsulInfo(res);
       } catch {
+        if (!active) return;
         setConsulInfo(null);
+      } finally {
+        if (active) setHasChecked(true);
       }
     };
+
     checkStatus();
     const interval = setInterval(checkStatus, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const navLinks = [
@@ -34,7 +45,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   ];
 
   const isConnected = consulInfo?.connected ?? false;
-  const statusLabel = consulInfo === null ? 'UNKNOWN' : isConnected ? 'CONNECTED' : 'UNAVAILABLE';
+  const statusLabel = !hasChecked
+    ? 'CHECKING...'
+    : consulInfo === null
+    ? 'DISCONNECTED'
+    : isConnected
+    ? 'CONNECTED'
+    : 'UNKNOWN';
 
   return (
     <>
@@ -107,13 +124,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
                 )}
                 <span
                   className={`relative inline-flex rounded-full h-2 w-2 ${
-                    isConnected ? 'bg-tertiary-fixed' : consulInfo === null ? 'bg-outline' : 'bg-error'
+                    isConnected ? 'bg-tertiary-fixed' : !hasChecked ? 'bg-outline' : 'bg-error'
                   }`}
                 ></span>
               </span>
               <span
                 className={`font-code-sm text-code-sm uppercase font-semibold ${
-                  isConnected ? 'text-tertiary-fixed' : consulInfo === null ? 'text-inverse-on-surface/60' : 'text-error'
+                  isConnected ? 'text-tertiary-fixed' : !hasChecked ? 'text-inverse-on-surface/60' : 'text-error'
                 }`}
               >
                 {statusLabel}
@@ -124,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
           <div className="font-code-sm text-code-sm text-inverse-on-surface/70 truncate">
             Leader:{' '}
             <span className="text-inverse-on-surface font-code-sm text-code-sm">
-              {isConnected ? consulInfo?.leader || 'Elected' : 'Unavailable'}
+              {isConnected ? consulInfo?.leader || 'Unknown' : 'Unknown'}
             </span>
           </div>
           <div className="font-code-sm text-code-sm text-inverse-on-surface/50 truncate">

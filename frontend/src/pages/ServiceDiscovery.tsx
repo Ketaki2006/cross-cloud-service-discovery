@@ -49,15 +49,17 @@ export const ServiceDiscovery: React.FC = () => {
   const [warningChecks, setWarningChecks] = useState<number | null>(null);
   const [criticalChecks, setCriticalChecks] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const fetchLiveMetadata = useCallback(async () => {
     setIsRefreshing(true);
     try {
       const [healthRes, payRes, catRes] = await Promise.all([
-        getHealthChecks().catch(() => null),
+        getHealthChecks(),
         getPaymentServiceHealth().catch(() => null),
         getConsulCatalog().catch(() => null),
       ]);
+      setConnectionError(null);
       if (healthRes?.summary) {
         setPassingChecks(healthRes.summary.passing);
         setWarningChecks(healthRes.summary.warning);
@@ -67,8 +69,15 @@ export const ServiceDiscovery: React.FC = () => {
         setWarningChecks(null);
         setCriticalChecks(null);
       }
-      if (payRes) setPaymentHealth(payRes);
-      if (catRes?.instances) setCatalogEntries(catRes.instances);
+      setPaymentHealth(payRes);
+      setCatalogEntries(catRes?.instances || []);
+    } catch (err: any) {
+      setConnectionError(err.message || 'Cannot connect to AWS Express Gateway.');
+      setPassingChecks(null);
+      setWarningChecks(null);
+      setCriticalChecks(null);
+      setPaymentHealth(null);
+      setCatalogEntries([]);
     } finally {
       setIsRefreshing(false);
     }
@@ -109,7 +118,17 @@ export const ServiceDiscovery: React.FC = () => {
           const node = inst.node || inst.Node?.Node || 'unknown';
           const datacenter = inst.datacenter || inst.Node?.Datacenter || 'unknown';
           const checks = inst.checks || inst.Checks || [];
-          const statusRaw = inst.status || (checks.every((c: any) => (c.status || c.Status) === 'passing') ? 'passing' : 'critical');
+          const statusRaw =
+            inst.status ||
+            (checks.length === 0
+              ? 'unknown'
+              : checks.some((c: any) => (c.status || c.Status) === 'critical')
+              ? 'critical'
+              : checks.some((c: any) => (c.status || c.Status) === 'warning')
+              ? 'warning'
+              : checks.every((c: any) => (c.status || c.Status) === 'passing')
+              ? 'passing'
+              : 'unknown');
           const isHealthy = String(statusRaw).toLowerCase() === 'passing';
           const firstCheck = checks[0] || {};
 
@@ -158,10 +177,16 @@ export const ServiceDiscovery: React.FC = () => {
   );
 
   useEffect(() => {
+    let active = true;
     performDiscovery('payment-service', 'any', false);
     fetchLiveMetadata();
-    const interval = setInterval(fetchLiveMetadata, 10000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (active) fetchLiveMetadata();
+    }, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [fetchLiveMetadata, performDiscovery]);
 
   const selectQuickResolver = (svcName: string, provider: string) => {
@@ -222,6 +247,24 @@ await axios.post(paymentUrl, { userId: 'usr_101', amount: 10, currency: 'USD' })
           </button>
         </div>
       </div>
+
+      {/* Gateway Disconnected Banner */}
+      {connectionError && (
+        <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border border-error/30">
+          <div className="flex items-start sm:items-center gap-2 font-body-sm text-body-sm">
+            <span className="material-symbols-outlined text-[20px] shrink-0">cloud_off</span>
+            <span>
+              <strong>Gateway Connection Lost:</strong> {connectionError}
+            </span>
+          </div>
+          <button
+            onClick={fetchLiveMetadata}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-error font-label-md text-label-md font-semibold shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Dynamic Service Discovery Query Box */}
       <section className="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
@@ -477,7 +520,9 @@ await axios.post(paymentUrl, { userId: 'usr_101', amount: 10, currency: 'USD' })
         <div className="grid grid-cols-1 gap-space-md">
           {catalogEntries.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-xl p-space-md text-center text-secondary font-body-sm text-body-sm">
-              No live instances reported in Consul catalog.
+              {connectionError
+                ? 'Catalog unavailable while AWS Gateway is disconnected.'
+                : 'No live instances reported in Consul catalog.'}
             </div>
           ) : (
             catalogEntries.map((entry) => (

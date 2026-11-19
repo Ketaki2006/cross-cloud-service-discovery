@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
+  getHealthChecks,
   getConsulCatalog,
   getPaymentServiceHealth,
   probeServiceHealth,
@@ -8,14 +9,34 @@ import {
 } from '../services/api';
 import {
   ConsulCatalogEntry,
+  HealthResponse,
   PaymentHealthCheckResponse,
   HealthState,
 } from '../types';
 import { useToast } from '../components/Toast';
 
+function resolveProviderFromTags(tags: string[] = []): string {
+  for (const tag of tags) {
+    const upper = String(tag).toUpperCase();
+    if (['AWS', 'AZURE', 'GCP', 'HYBRID', 'LOCAL'].includes(upper)) {
+      return upper === 'HYBRID' ? 'Hybrid' : upper === 'LOCAL' ? 'Local' : upper;
+    }
+  }
+  return 'Unknown';
+}
+
+function mapCheckStatusToHealthState(status?: string): HealthState {
+  const s = String(status || '').toLowerCase();
+  if (s === 'passing') return 'PASSING';
+  if (s === 'critical') return 'CRITICAL';
+  if (s === 'warning') return 'WARNING';
+  return 'UNKNOWN';
+}
+
 export const HealthMonitoring: React.FC = () => {
   const { showToast } = useToast();
   const [items, setItems] = useState<ConsulCatalogEntry[]>([]);
+  const [healthSummary, setHealthSummary] = useState<HealthResponse | null>(null);
   const [paymentHealth, setPaymentHealth] = useState<PaymentHealthCheckResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -37,12 +58,49 @@ export const HealthMonitoring: React.FC = () => {
   const fetchHealthData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const [catalogRes, paymentRes] = await Promise.all([
-        getConsulCatalog(),
+      const [healthRes, catalogRes, paymentRes] = await Promise.all([
+        getHealthChecks(),
+        getConsulCatalog().catch(() => null),
         getPaymentServiceHealth().catch(() => null),
       ]);
 
-      const entries = catalogRes.instances || [];
+      const catalogById = new Map<string, ConsulCatalogEntry>();
+      for (const inst of catalogRes?.instances || []) {
+        catalogById.set(inst.id, inst);
+      }
+
+      const checks = Array.isArray(healthRes.checks) ? healthRes.checks : [];
+      const entries: ConsulCatalogEntry[] = checks.map((chk) => {
+        const svcId = chk.ServiceID || chk.CheckID;
+        const catalogMatch = chk.ServiceID ? catalogById.get(chk.ServiceID) : undefined;
+        const tags = Array.isArray(chk.ServiceTags) ? chk.ServiceTags : [];
+        const status = mapCheckStatusToHealthState(chk.Status);
+        const regionTag = tags.find(
+          (t) =>
+            !['AWS', 'AZURE', 'GCP', 'LOCAL', 'HYBRID'].includes(String(t).toUpperCase()) &&
+            !String(t).startsWith('health:')
+        );
+
+        return {
+          id: svcId,
+          name: chk.ServiceName || chk.Name || svcId,
+          provider: catalogMatch?.provider || (chk.ServiceID ? resolveProviderFromTags(tags) : 'Consul'),
+          region: catalogMatch?.region || regionTag || chk.Node || 'unknown',
+          address: catalogMatch?.address || '—',
+          port: catalogMatch?.port || 0,
+          tags,
+          node: catalogMatch?.node || chk.Node || 'unknown',
+          datacenter: catalogMatch?.datacenter || 'unknown',
+          healthStatus: status,
+          excludedFromDiscovery: catalogMatch ? catalogMatch.excludedFromDiscovery : status !== 'PASSING',
+          lastCheckId: chk.CheckID,
+          lastCheckOutput: chk.Output || chk.Notes || 'No check output recorded',
+          checkPath: catalogMatch?.checkPath || '/health',
+          healthUrl: catalogMatch?.healthUrl || null,
+        };
+      });
+
+      setHealthSummary(healthRes);
       setItems(entries);
       setPaymentHealth(paymentRes);
       setLoadError(null);
@@ -57,7 +115,10 @@ export const HealthMonitoring: React.FC = () => {
         return null;
       });
     } catch (err: any) {
+      setHealthSummary(null);
       setItems([]);
+      setPaymentHealth(null);
+      setSelectedService(null);
       setLoadError(err.message || 'Unable to retrieve health checks from Consul backend.');
     } finally {
       setIsRefreshing(false);
@@ -65,9 +126,16 @@ export const HealthMonitoring: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchHealthData();
-    const interval = setInterval(fetchHealthData, 10000);
-    return () => clearInterval(interval);
+    let active = true;
+    const run = () => {
+      if (active) fetchHealthData();
+    };
+    run();
+    const interval = setInterval(run, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [fetchHealthData]);
 
   const pingSingleService = async (item: ConsulCatalogEntry) => {
@@ -146,9 +214,12 @@ export const HealthMonitoring: React.FC = () => {
     return list;
   }, [items, searchFilter, filterCat]);
 
-  const total = loadError ? null : items.length;
-  const passingCount = loadError ? null : items.filter((i) => i.healthStatus === 'PASSING').length;
-  const criticalCount = loadError ? null : items.filter((i) => i.healthStatus === 'CRITICAL' || i.healthStatus === 'WARNING').length;
+  const total = loadError || !healthSummary ? null : healthSummary.totalChecks ?? items.length;
+  const passingCount = loadError || !healthSummary ? null : healthSummary.summary?.passing ?? items.filter((i) => i.healthStatus === 'PASSING').length;
+  const criticalCount =
+    loadError || !healthSummary
+      ? null
+      : (healthSummary.summary?.critical ?? 0) + (healthSummary.summary?.warning ?? 0);
   const slaPct =
     total !== null && total > 0 && passingCount !== null
       ? ((passingCount / total) * 100).toFixed(1)
@@ -156,7 +227,21 @@ export const HealthMonitoring: React.FC = () => {
       ? '0.0'
       : null;
 
-  const paymentState: HealthState = paymentHealth?.healthState || 'UNKNOWN';
+  const paymentItems = items.filter((i) => i.name === 'payment-service');
+  const derivedPaymentState: HealthState =
+    paymentItems.length === 0
+      ? 'UNKNOWN'
+      : paymentItems.some((i) => i.healthStatus === 'CRITICAL')
+      ? 'CRITICAL'
+      : paymentItems.some((i) => i.healthStatus === 'WARNING')
+      ? 'WARNING'
+      : paymentItems.every((i) => i.healthStatus === 'PASSING')
+      ? 'PASSING'
+      : 'UNKNOWN';
+
+  const paymentState: HealthState = loadError
+    ? 'UNKNOWN'
+    : paymentHealth?.healthState || derivedPaymentState;
 
   return (
     <div className="flex flex-col w-full gap-space-lg">
@@ -195,16 +280,24 @@ export const HealthMonitoring: React.FC = () => {
 
       {/* Backend Offline / Error Alert */}
       {loadError && (
-        <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex items-center gap-2 font-body-sm text-body-sm">
-          <span className="material-symbols-outlined text-[20px]">cloud_off</span>
-          <span>
-            <strong>Health State UNKNOWN:</strong> {loadError}
-          </span>
+        <div className="p-space-md rounded-xl bg-error-container text-on-error-container flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border border-error/30">
+          <div className="flex items-start sm:items-center gap-2 font-body-sm text-body-sm">
+            <span className="material-symbols-outlined text-[20px] shrink-0">cloud_off</span>
+            <span>
+              <strong>Health State UNKNOWN:</strong> {loadError}
+            </span>
+          </div>
+          <button
+            onClick={fetchHealthData}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-error font-label-md text-label-md font-semibold shrink-0"
+          >
+            Retry
+          </button>
         </div>
       )}
 
       {/* Critical Exclusion Warning Banner for Azure Payment Service */}
-      {paymentHealth && paymentState === 'CRITICAL' && (
+      {paymentState === 'CRITICAL' && (
         <div className="p-space-md rounded-xl bg-error-container text-on-error-container border border-error/40 flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
           <div className="flex items-start sm:items-center gap-2 font-body-sm text-body-sm">
             <span className="material-symbols-outlined text-[22px] shrink-0">warning</span>
@@ -252,7 +345,7 @@ export const HealthMonitoring: React.FC = () => {
             </div>
           </div>
           <div className="mt-4 text-body-sm font-body-sm text-on-surface-variant">
-            {paymentHealth?.excludedFromDiscovery
+            {paymentHealth?.excludedFromDiscovery || paymentState === 'CRITICAL'
               ? 'Excluded from ?passing discovery'
               : paymentState === 'PASSING'
               ? 'Active in ?passing discovery'
@@ -296,7 +389,11 @@ export const HealthMonitoring: React.FC = () => {
             </div>
           </div>
           <div className="mt-4 text-body-sm font-body-sm text-on-surface-variant">
-            {criticalCount && criticalCount > 0 ? 'Failover isolation active' : 'No failing services'}
+            {criticalCount === null
+              ? 'Status unknown (disconnected)'
+              : criticalCount > 0
+              ? 'Failover isolation active'
+              : 'No failing services'}
           </div>
         </div>
 

@@ -19,6 +19,7 @@ cat <<EOF | sudo tee /etc/systemd/system/crosscloud-gateway.service
 [Unit]
 Description=Cross-Cloud Service Discovery Express Gateway & React SPA
 After=network-online.target consul.service user-service.service wg-quick@wg0.service
+Wants=network-online.target consul.service user-service.service wg-quick@wg0.service
 
 [Service]
 Type=simple

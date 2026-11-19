@@ -3,15 +3,19 @@
 @tailwind utilities;
 
 @layer base {
-  html,
+  html {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100%;
+  }
   body {
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    max-width: 100%;
-  }
-  body {
-    overscroll-behavior: none;
+    overflow-y: auto;
+    min-height: 100%;
   }
   main > :first-child {
     margin-top: 0 !important;
@@ -21,7 +25,19 @@
   }
 }
 
+/* Elegant visible custom scrollbar */
 ::-webkit-scrollbar {
-  display: none;
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 

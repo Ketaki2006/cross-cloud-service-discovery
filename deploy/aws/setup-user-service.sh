@@ -23,6 +23,7 @@ cat <<EOF | sudo tee /etc/systemd/system/user-service.service
 [Unit]
 Description=AWS User Service (Cross-Cloud Mesh)
 After=network-online.target wg-quick@wg0.service consul.service
+Wants=network-online.target wg-quick@wg0.service consul.service
 
 [Service]
 Type=simple
@@ -34,7 +35,7 @@ Environment=CLOUD_REGION=us-east-1
 Environment=CONSUL_URL=http://127.0.0.1:8500
 Environment=TARGET_SERVICE_NAME=payment-service
 ExecStart=/usr/bin/node user-service.js
-Restart=on-failure
+Restart=always
 RestartSec=5
 
 [Install]
